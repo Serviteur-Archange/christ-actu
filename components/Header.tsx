@@ -54,27 +54,28 @@ export default function Header() {
   return (
     <header className="bg-red-700 text-white shadow-md relative z-50 font-sans">
       
-      {/* LIGNE SUPÉRIEURE : LOGO + BANNIÈRE + RECHERCHE + BURGER MOBILE */}
-      <div className="w-full px-4 md:px-12 py-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-6 flex-1">
-          <Link href="/" className="flex-shrink-0 hover:opacity-90 transition cursor-pointer">
-            <Image 
-              src="/CA blanc.png" 
-              alt="Christ Actu Logo" 
-              width={200} 
-              height={50} 
-              className="h-9 md:h-10 w-auto object-contain"
-              priority
-            />
-          </Link>
+      {/* LIGNE SUPÉRIEURE : LOGO + RECHERCHE DESKTOP + BURGER MOBILE */}
+      <div className="w-full px-4 lg:px-12 py-3 flex items-center justify-between gap-2">
+        
+        {/* LOGO */}
+        <Link href="/" className="flex-shrink-0 hover:opacity-90 transition cursor-pointer">
+          <Image 
+            src="/CA blanc.png" 
+            alt="Christ Actu Logo" 
+            width={180} 
+            height={45} 
+            className="h-8 sm:h-10 w-auto object-contain"
+            priority
+          />
+        </Link>
 
-          <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6">
-            <TextFlipper />
-          </div>
+        {/* FLIPPER TEXT (DESKTOP SEULEMENT) */}
+        <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6">
+          <TextFlipper />
         </div>
 
         {/* BARRE DE RECHERCHE DESKTOP */}
-        <div className="hidden md:block relative w-72 lg:w-80">
+        <div className="hidden lg:block relative w-72">
           <input
             type="text"
             placeholder="Rechercher une actualité..."
@@ -83,19 +84,19 @@ export default function Header() {
           <Search className="absolute right-3 top-2.5 text-red-200 w-4 h-4" />
         </div>
 
-        {/* BOUTON BURGER MOBILE */}
+        {/* BOUTON BURGER (VISIBLE SUR TOUT ÉCRAN < 1024px) */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden p-2 rounded-lg text-white hover:bg-red-800 transition focus:outline-none"
+          className="lg:hidden p-2 rounded-lg text-white hover:bg-red-800 transition focus:outline-none"
           aria-label="Toggle Menu"
         >
           {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
       </div>
 
-      {/* BARRE DE NAVIGATION DESKTOP */}
-      <nav className="hidden md:block bg-slate-900 border-t border-slate-800 w-full px-6 md:px-12">
-        <div className="w-full flex items-center justify-between text-sm md:text-base font-semibold text-slate-200">
+      {/* BARRE DE NAVIGATION DESKTOP (CACHE EN DESSOUS DE 1024px) */}
+      <nav className="hidden lg:block bg-slate-900 border-t border-slate-800 w-full px-6 lg:px-12">
+        <div className="w-full flex items-center justify-between text-sm lg:text-base font-semibold text-slate-200">
           
           <button 
             onClick={() => setIsDonationOpen(true)}
@@ -155,11 +156,10 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* MENU MOBILE DÉROULANT */}
+      {/* MENU MOBILE DÉROULANT (S'AFFICHE SOUS 1024px) */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-slate-900 border-t border-slate-800 px-4 pt-4 pb-6 space-y-4">
+        <div className="lg:hidden bg-slate-900 border-t border-slate-800 px-4 pt-4 pb-6 space-y-4">
           
-          {/* BARRE DE RECHERCHE MOBILE */}
           <div className="relative w-full">
             <input
               type="text"
@@ -169,7 +169,6 @@ export default function Header() {
             <Search className="absolute right-3 top-2.5 text-slate-400 w-4 h-4" />
           </div>
 
-          {/* BOUTON DON MOBILE */}
           <button 
             onClick={() => {
               setIsMobileMenuOpen(false);
@@ -181,7 +180,6 @@ export default function Header() {
             <span>Fais un don</span>
           </button>
 
-          {/* LIENS MOBILE AVEC ACCORDÉONS */}
           <div className="space-y-1 divide-y divide-slate-800">
             {navItems.map((item) => (
               <div key={item.slug} className="pt-2">
@@ -206,7 +204,6 @@ export default function Header() {
                   </button>
                 </div>
 
-                {/* SOUS-RUBRIQUES MOBILE */}
                 {openMobileSubmenu === item.slug && (
                   <div className="pl-4 pb-2 space-y-2 bg-slate-950/50 rounded-lg py-2 mt-1">
                     {item.subItems.map((sub, idx) => (
