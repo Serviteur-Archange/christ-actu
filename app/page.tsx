@@ -1,6 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -16,30 +15,9 @@ interface Article {
   created_at: string;
 }
 
-const DEMO_ARTICLES: Article[] = [
-  {
-    id: 'demo-1',
-    title: 'Évangélisation massive : Des milliers de vies transformées lors du grand rassemblement',
-    category: 'Monde',
-    content: 'Un grand rassemblement s’est tenu ce week-end, rassemblant des fidèles venus de diverses régions pour des temps forts de prière et d’enseignement.',
-    image_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'demo-2',
-    title: 'Nouveau chant de louange : L’album qui inspire la communauté cette saison',
-    category: 'Société & Culture',
-    content: 'La musique sacrée s’enrichit d’un tout nouvel opus qui touche déjà de nombreux cœurs à travers le continent.',
-    image_url: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=600&auto=format&fit=crop',
-    created_at: new Date().toISOString()
-  }
-];
-
 export default function HomeJournal() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // État pour simuler/gérer la présence d'une pub chargée (met à true pour tester l'affichage)
   const [hasAdLoaded, setHasAdLoaded] = useState(true);
 
   useEffect(() => {
@@ -54,13 +32,15 @@ export default function HomeJournal() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        setArticles(DEMO_ARTICLES);
-      } else {
+      if (error) {
+        console.error('Erreur Supabase:', error.message);
+        setArticles([]);
+      } else if (data) {
         setArticles(data);
       }
-    } catch {
-      setArticles(DEMO_ARTICLES);
+    } catch (err) {
+      console.error('Erreur de requête:', err);
+      setArticles([]);
     } finally {
       setLoading(false);
     }
@@ -75,7 +55,7 @@ export default function HomeJournal() {
       {/* CONTENU PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 py-6 pb-16 flex-1 w-full">
         
-        {/* BANNIÈRE ADSENSE DYNAMIQUE (s'affiche uniquement si hasAdLoaded === true) */}
+        {/* BANNIÈRE ADSENSE DYNAMIQUE */}
         {hasAdLoaded && (
           <div className="w-full mb-8 overflow-hidden transition-all duration-500 ease-in-out">
             <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[250px] text-center shadow-sm relative">
@@ -99,6 +79,13 @@ export default function HomeJournal() {
         {loading ? (
           <div className="text-center py-20 text-gray-500 font-bold animate-pulse">
             Chargement des actualités en cours...
+          </div>
+        ) : articles.length === 0 ? (
+          <div className="bg-white rounded-xl p-12 text-center border border-gray-200 shadow-sm my-8">
+            <h3 className="text-lg font-bold text-gray-700 mb-2">Aucun article disponible</h3>
+            <p className="text-sm text-gray-500">
+              Vérifiez que des articles existent dans la base Supabase ou que la table RLS est bien ouverte.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
