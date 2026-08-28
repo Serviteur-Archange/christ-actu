@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Heart, CreditCard, Lock, Copy, Check, ExternalLink, User } from 'lucide-react';
+import { X, Heart, CreditCard, Lock, Copy, Check, ExternalLink, User, Smartphone } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const PaystackButton = dynamic(
@@ -16,22 +16,18 @@ interface DonationModalProps {
 
 export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [amount, setAmount] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'wave' | 'om' | 'mtn' | 'moov' | 'paypal'>('wave');
+  const [paymentMethod, setPaymentMethod] = useState<'wave' | 'paystack' | 'paypal'>('paystack');
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
 
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
 
-  // Clé publique Paystack par défaut (ou variable Vercel)
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_0b2ee32c0a6d500062d73de308dc698c2ca";
 
   if (!isOpen) return null;
 
-  const phoneNumbers: Record<string, { name: string; number: string }> = {
-    om: { name: 'Orange Money', number: '0701300391' },
-    mtn: { name: 'MTN MoMo', number: '0545946345' },
-    moov: { name: 'Moov Money', number: '0171724536' },
-    wave: { name: 'Wave', number: '0545946345' },
+  const phoneNumbers = {
+    wave: '0545946345',
   };
 
   const copyToClipboard = (text: string) => {
@@ -65,10 +61,10 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
 
         <div className="p-6 space-y-5">
           
-          {/* IDENTITÉ DONATEUR */}
+          {/* COORDONNÉES DONATEUR */}
           <div className="space-y-2">
             <label className="block text-xs font-bold text-gray-700 uppercase flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-red-600" /> Vos coordonnées (Optionnel)
+              <User className="w-3.5 h-3.5 text-red-600" /> Vos coordonnées
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
@@ -80,7 +76,7 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
               />
               <input
                 type="email"
-                placeholder="Adresse Email"
+                placeholder="Adresse Email (requis pour Paystack)"
                 value={donorEmail}
                 onChange={(e) => setDonorEmail(e.target.value)}
                 className="text-xs border border-gray-300 rounded-lg p-3 text-gray-800 focus:ring-1 focus:ring-red-600 focus:outline-none"
@@ -113,7 +109,19 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
               Moyen de paiement
             </label>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('paystack')}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
+                  paymentMethod === 'paystack' ? 'border-red-600 bg-red-50 text-red-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <Smartphone className="w-4 h-4 text-red-600" />
+                <span>Mobile / Carte</span>
+                <span className="text-[9px] text-gray-400 font-normal">(Orange, MTN, Moov)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setPaymentMethod('wave')}
@@ -122,51 +130,8 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                 }`}
               >
                 <span className="w-3 h-3 rounded-full bg-sky-400"></span>
-                Wave
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('card')}
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
-                  paymentMethod === 'card' ? 'border-red-600 bg-red-50 text-red-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-red-600" />
-                Carte / Paystack
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('om')}
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
-                  paymentMethod === 'om' ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                Orange Money
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('mtn')}
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
-                  paymentMethod === 'mtn' ? 'border-yellow-500 bg-yellow-50 text-yellow-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
-                MTN MoMo
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('moov')}
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
-                  paymentMethod === 'moov' ? 'border-blue-600 bg-blue-50 text-blue-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-full bg-blue-600"></span>
-                Moov Money
+                <span>Wave</span>
+                <span className="text-[9px] text-gray-400 font-normal">(App directe)</span>
               </button>
 
               <button
@@ -177,51 +142,18 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                 }`}
               >
                 <span className="font-extrabold text-indigo-700 italic">PayPal</span>
+                <span className="text-[9px] text-gray-400 font-normal">(International)</span>
               </button>
             </div>
 
-            {/* CAS 1 : WAVE (REDIRECTION APPLI DIRECTE) */}
-            {paymentMethod === 'wave' && (
-              <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 text-center space-y-3">
-                <p className="text-xs text-sky-900 font-bold">
-                  Cliquez ci-dessous pour ouvrir directement l'application Wave :
-                </p>
-
-                <a 
-                  href="https://pay.wave.com/m/M_ci_qAiPyK_VvoT8/c/ci/?src=p"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#11b3e5] hover:bg-[#0ea5d4] text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs cursor-pointer"
-                >
-                  <span>📱 Ouvrir l'application Wave</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-
-                <div className="pt-2 border-t border-sky-200/60 flex items-center justify-between text-xs text-slate-600">
-                  <span>Numéro direct : <strong>{phoneNumbers.wave.number}</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(phoneNumbers.wave.number)}
-                    className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
-                  >
-                    {copiedNumber === phoneNumbers.wave.number ? (
-                      <Check className="w-3.5 h-3.5 text-green-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-600" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* CAS 2 : PAYSTACK (CARTE & GUICHET SÉCURISÉ) */}
-            {paymentMethod === 'card' && (
+            {/* CAS 1 : PAYSTACK (ORANGE, MTN, MOOV & CARTE BANCAIRE) */}
+            {paymentMethod === 'paystack' && (
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3 text-center">
                 <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-700 mb-1">
-                  <Lock className="w-3.5 h-3.5 text-green-600" /> Paiement sécurisé par Carte / Mobile
+                  <Lock className="w-3.5 h-3.5 text-green-600" /> Guichet automatique sécurisé
                 </div>
                 <p className="text-xs text-gray-600">
-                  Réglez votre don de <strong>{amount ? `${Number(amount).toLocaleString()} FCFA` : 'votre choix'}</strong>.
+                  Validez votre don via <strong>Orange Money, MTN MoMo, Moov Money</strong> ou <strong>Carte bancaire</strong>.
                 </p>
                 
                 {Number(amount) > 0 ? (
@@ -231,63 +163,61 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                     amount={Number(amount) * 100}
                     currency="XOF"
                     reference={new Date().getTime().toString()}
-                    text={`Payer ${Number(amount).toLocaleString()} FCFA`}
+                    text={`Payer ${Number(amount).toLocaleString()} FCFA via Paystack`}
                     onSuccess={(reference: any) => {
-                      alert('Merci pour votre don ! Référence : ' + reference.reference);
+                      alert('Merci pour votre soutien ! Référence : ' + reference.reference);
                       onClose();
                     }}
                     onClose={() => console.log('Transaction annulée')}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                   />
                 ) : (
                   <button
                     type="button"
                     onClick={() => alert('Veuillez d\'abord saisir un montant valide.')}
-                    className="w-full bg-gray-400 text-white font-bold py-3 rounded-xl text-xs transition shadow-md cursor-not-allowed"
+                    className="w-full bg-gray-400 text-white font-bold py-3.5 rounded-xl text-xs transition shadow-md cursor-not-allowed"
                   >
-                    Saisissez un montant
+                    Saisissez un montant ci-dessus
                   </button>
                 )}
               </div>
             )}
 
-            {/* CAS 3 : PAIEMENTS MANUELS DIRECTS (ORANGE, MTN, MOOV) */}
-            {['om', 'mtn', 'moov'].includes(paymentMethod) && (
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <p className="text-xs text-slate-600">
-                  Effectuez votre transfert de <strong className="text-slate-900">{amount ? `${Number(amount).toLocaleString()} FCFA` : 'votre choix'}</strong> sur le numéro ci-dessous :
+            {/* CAS 2 : WAVE (REDIRECTION NATIVE APPLI) */}
+            {paymentMethod === 'wave' && (
+              <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 text-center space-y-3">
+                <p className="text-xs text-sky-900 font-bold">
+                  Cliquez ci-dessous pour ouvrir directement votre application Wave :
                 </p>
-                
-                <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
-                  <div>
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase">
-                      Numéro {phoneNumbers[paymentMethod].name}
-                    </span>
-                    <span className="text-base font-mono font-bold text-slate-900">
-                      {phoneNumbers[paymentMethod].number}
-                    </span>
-                  </div>
-                  
+
+                <a 
+                  href={`https://pay.wave.com/m/M_ci_qAiPyK_VvoT8/c/ci/?src=p${amount ? `&amount=${amount}` : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#11b3e5] hover:bg-[#0ea5d4] text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs cursor-pointer"
+                >
+                  <span>📱 Ouvrir Wave et payer</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+
+                <div className="pt-2 border-t border-sky-200/60 flex items-center justify-between text-xs text-slate-600">
+                  <span>Numéro direct : <strong>{phoneNumbers.wave}</strong></span>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(phoneNumbers[paymentMethod].number)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md transition cursor-pointer"
+                    onClick={() => copyToClipboard(phoneNumbers.wave)}
+                    className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
                   >
-                    {copiedNumber === phoneNumbers[paymentMethod].number ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-green-600" /> Copié
-                      </>
+                    {copiedNumber === phoneNumbers.wave ? (
+                      <Check className="w-3.5 h-3.5 text-green-600" />
                     ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" /> Copier
-                      </>
+                      <Copy className="w-3.5 h-3.5 text-slate-600" />
                     )}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* CAS 4 : PAYPAL */}
+            {/* CAS 3 : PAYPAL */}
             {paymentMethod === 'paypal' && (
               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center space-y-3">
                 <p className="text-xs text-indigo-900">
@@ -297,7 +227,7 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                   href={`https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=christactu@gmail.com&currency_code=EUR${amount ? `&amount=${amount}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-xs"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-xs"
                 >
                   <span>Accéder à PayPal</span>
                   <ExternalLink className="w-4 h-4" />
