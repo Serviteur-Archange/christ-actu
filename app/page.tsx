@@ -1,9 +1,8 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import AdSidebar from '@/components/AdSidebar';
+
+export const revalidate = 0; // Force le rechargement des données à chaque visite
 
 interface Article {
   id: string;
@@ -15,76 +14,58 @@ interface Article {
   created_at: string;
 }
 
-export default function HomeJournal() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasAdLoaded, setHasAdLoaded] = useState(true);
+async function getArticles(): Promise<Article[]> {
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    fetchArticles();
-  }, []);
-
-  const fetchArticles = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erreur Supabase:', error.message);
-        setArticles([]);
-      } else if (data) {
-        setArticles(data);
-      }
-    } catch (err) {
-      console.error('Erreur de requête:', err);
-      setArticles([]);
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error('Erreur Supabase:', error);
+      return [];
     }
-  };
+    return data || [];
+  } catch (err) {
+    console.error('Erreur Fetch:', err);
+    return [];
+  }
+}
 
+export default async function HomeJournal() {
+  const articles = await getArticles();
+  
   const urgentArticle = articles.find((art) => art.is_urgent) || articles[0];
   const regularArticles = articles.filter((art) => art.id !== urgentArticle?.id);
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-900 flex flex-col justify-between" suppressHydrationWarning>
-      
-      {/* CONTENU PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 py-6 pb-16 flex-1 w-full">
         
         {/* BANNIÈRE ADSENSE DYNAMIQUE */}
-        {hasAdLoaded && (
-          <div className="w-full mb-8 overflow-hidden transition-all duration-500 ease-in-out">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[250px] text-center shadow-sm relative">
-              <div className="absolute top-2 right-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                <span>PUBLICITÉ</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-              </div>
-              
-              <div className="space-y-2">
-                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 font-bold text-xs rounded-full uppercase tracking-wider">
-                  Bannière Google AdSense Dynamique
-                </span>
-                <p className="text-xs text-gray-400 max-w-md">
-                  Cet emplacement se masque automatiquement si Google ne renvoie aucune publicité.
-                </p>
-              </div>
+        <div className="w-full mb-8 overflow-hidden transition-all duration-500 ease-in-out">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[250px] text-center shadow-sm relative">
+            <div className="absolute top-2 right-3 text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+              <span>PUBLICITÉ</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+            </div>
+            
+            <div className="space-y-2">
+              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 font-bold text-xs rounded-full uppercase tracking-wider">
+                Bannière Google AdSense Dynamique
+              </span>
+              <p className="text-xs text-gray-400 max-w-md">
+                Cet emplacement se masque automatiquement si Google ne renvoie aucune publicité.
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
-        {loading ? (
-          <div className="text-center py-20 text-gray-500 font-bold animate-pulse">
-            Chargement des actualités en cours...
-          </div>
-        ) : articles.length === 0 ? (
+        {articles.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center border border-gray-200 shadow-sm my-8">
             <h3 className="text-lg font-bold text-gray-700 mb-2">Aucun article disponible</h3>
             <p className="text-sm text-gray-500">
-              Vérifiez que des articles existent dans la base Supabase ou que la table RLS est bien ouverte.
+              Chargement ou connexion Supabase en cours d'analyse...
             </p>
           </div>
         ) : (
@@ -175,12 +156,9 @@ export default function HomeJournal() {
               </div>
             </section>
 
-            {/* SIDEBAR AVEC PUBLICITÉ */}
             <aside className="lg:col-span-4 space-y-8">
-              
               <AdSidebar />
 
-              {/* CARD PORTRAIT */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4 border-b pb-2">
                   <h2 className="text-lg font-black text-gray-900">Portrait</h2>
@@ -221,13 +199,11 @@ export default function HomeJournal() {
                   );
                 })()}
               </div>
-
             </aside>
 
           </div>
         )}
       </main>
-
     </div>
   );
 }
