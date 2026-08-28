@@ -16,13 +16,13 @@ interface DonationModalProps {
 
 export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [amount, setAmount] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'om' | 'mtn' | 'moov' | 'wave' | 'card' | 'paypal'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'wave' | 'om' | 'mtn' | 'moov' | 'paypal'>('wave');
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
 
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
 
-  // Clé publique Paystack (prend la variable Vercel ou la clé de test par défaut)
+  // Clé publique Paystack par défaut (ou variable Vercel)
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_0b2ee32c0a6d500062d73de308dc698c2ca";
 
   if (!isOpen) return null;
@@ -38,22 +38,6 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
     navigator.clipboard.writeText(text);
     setCopiedNumber(text);
     setTimeout(() => setCopiedNumber(null), 2000);
-  };
-
-  const handleMobileRedirect = (provider: string) => {
-    if (!amount || Number(amount) <= 0) {
-      alert("Veuillez d'abord saisir un montant valide.");
-      return;
-    }
-
-    if (provider === 'wave') {
-      window.open(`https://wave.com/send?phone=+225${phoneNumbers.wave.number}&amount=${amount}`, '_blank');
-    } else if (provider === 'paypal') {
-      window.open(`https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=christactu@gmail.com&currency_code=EUR&amount=${amount}`, '_blank');
-    } else {
-      copyToClipboard(phoneNumbers[provider].number);
-      alert(`Numéro ${phoneNumbers[provider].name} (${phoneNumbers[provider].number}) copié !`);
-    }
   };
 
   return (
@@ -123,13 +107,24 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
             </div>
           </div>
 
-          {/* SELECTION MOYEN DE PAIEMENT */}
+          {/* SÉLECTION DU MOYEN DE PAIEMENT */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase mb-2">
               Moyen de paiement
             </label>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('wave')}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
+                  paymentMethod === 'wave' ? 'border-sky-400 bg-sky-50 text-sky-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-full bg-sky-400"></span>
+                Wave
+              </button>
+
               <button
                 type="button"
                 onClick={() => setPaymentMethod('card')}
@@ -176,17 +171,6 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
 
               <button
                 type="button"
-                onClick={() => setPaymentMethod('wave')}
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
-                  paymentMethod === 'wave' ? 'border-sky-400 bg-sky-50 text-sky-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-full bg-sky-400"></span>
-                Wave
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setPaymentMethod('paypal')}
                 className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 text-xs font-bold transition ${
                   paymentMethod === 'paypal' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-gray-100 hover:bg-gray-50 text-gray-700'
@@ -196,14 +180,48 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
               </button>
             </div>
 
-            {/* CAS 1 : PAYSTACK (CARTE & MOBILE MONEY INTEGRÉ) */}
+            {/* CAS 1 : WAVE (REDIRECTION APPLI DIRECTE) */}
+            {paymentMethod === 'wave' && (
+              <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 text-center space-y-3">
+                <p className="text-xs text-sky-900 font-bold">
+                  Cliquez ci-dessous pour ouvrir directement l'application Wave :
+                </p>
+
+                <a 
+                  href="https://pay.wave.com/m/M_ci_qAiPyK_VvoT8/c/ci/?src=p"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#11b3e5] hover:bg-[#0ea5d4] text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs cursor-pointer"
+                >
+                  <span>📱 Ouvrir l'application Wave</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+
+                <div className="pt-2 border-t border-sky-200/60 flex items-center justify-between text-xs text-slate-600">
+                  <span>Numéro direct : <strong>{phoneNumbers.wave.number}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(phoneNumbers.wave.number)}
+                    className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    {copiedNumber === phoneNumbers.wave.number ? (
+                      <Check className="w-3.5 h-3.5 text-green-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-slate-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CAS 2 : PAYSTACK (CARTE & GUICHET SÉCURISÉ) */}
             {paymentMethod === 'card' && (
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3 text-center">
                 <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-700 mb-1">
                   <Lock className="w-3.5 h-3.5 text-green-600" /> Paiement sécurisé par Carte / Mobile
                 </div>
                 <p className="text-xs text-gray-600">
-                  Réglez votre don de <strong>{amount ? `${Number(amount).toLocaleString()} FCFA` : 'votre choix'}</strong> par carte bancaire ou mobile money.
+                  Réglez votre don de <strong>{amount ? `${Number(amount).toLocaleString()} FCFA` : 'votre choix'}</strong>.
                 </p>
                 
                 {Number(amount) > 0 ? (
@@ -212,7 +230,6 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                     email={donorEmail || 'donateur@christactu.com'}
                     amount={Number(amount) * 100}
                     currency="XOF"
-                    channels={['card', 'mobile_money']}
                     reference={new Date().getTime().toString()}
                     text={`Payer ${Number(amount).toLocaleString()} FCFA`}
                     onSuccess={(reference: any) => {
@@ -234,8 +251,8 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
               </div>
             )}
 
-            {/* CAS 2 : PAIEMENTS MANUELS DIRECTS */}
-            {['om', 'mtn', 'moov', 'wave'].includes(paymentMethod) && (
+            {/* CAS 3 : PAIEMENTS MANUELS DIRECTS (ORANGE, MTN, MOOV) */}
+            {['om', 'mtn', 'moov'].includes(paymentMethod) && (
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                 <p className="text-xs text-slate-600">
                   Effectuez votre transfert de <strong className="text-slate-900">{amount ? `${Number(amount).toLocaleString()} FCFA` : 'votre choix'}</strong> sur le numéro ci-dessous :
@@ -267,32 +284,24 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                     )}
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleMobileRedirect(paymentMethod)}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer mt-2"
-                >
-                  <span>Lancer le paiement {phoneNumbers[paymentMethod].name}</span>
-                  <ExternalLink className="w-4 h-4" />
-                </button>
               </div>
             )}
 
-            {/* CAS 3 : PAYPAL */}
+            {/* CAS 4 : PAYPAL */}
             {paymentMethod === 'paypal' && (
               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center space-y-3">
                 <p className="text-xs text-indigo-900">
                   Vous allez être redirigé vers <strong>PayPal</strong> pour valider votre don.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => handleMobileRedirect('paypal')}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                <a
+                  href={`https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=christactu@gmail.com&currency_code=EUR${amount ? `&amount=${amount}` : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-xs"
                 >
                   <span>Accéder à PayPal</span>
                   <ExternalLink className="w-4 h-4" />
-                </button>
+                </a>
               </div>
             )}
 
