@@ -3,21 +3,20 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, ChevronDown, Heart } from 'lucide-react';
+import { Search, ChevronDown, Heart, Menu, X } from 'lucide-react';
 import TextFlipper from '@/components/TextFlipper';
 import DonationModal from '@/components/DonationModal';
 
 export default function Header() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isDonationOpen, setIsDonationOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openMobileSubmenu, setOpenMobileSubmenu] = useState<string | null>(null);
 
-  // Redirection corrigée vers les routes directes (sans /categorie/)
   const getSubItemLink = (parentSlug: string, subItemName: string) => {
     if (subItemName === 'À la Une') return '/a-la-une';
     if (subItemName === 'Flash Info') return '/flash-info';
     if (subItemName === 'Vidéos') return '/videos';
-    
-    // Si tu veux aussi enlever /categorie/ pour Monde, Églises, etc. :
     return `/${parentSlug}`;
   };
 
@@ -48,11 +47,15 @@ export default function Header() {
     },
   ];
 
+  const toggleMobileSubmenu = (slug: string) => {
+    setOpenMobileSubmenu(openMobileSubmenu === slug ? null : slug);
+  };
+
   return (
     <header className="bg-red-700 text-white shadow-md relative z-50 font-sans">
       
-      {/* LIGNE SUPÉRIEURE : LOGO + BANNIÈRE + RECHERCHE */}
-      <div className="w-full px-6 md:px-12 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* LIGNE SUPÉRIEURE : LOGO + BANNIÈRE + RECHERCHE + BURGER MOBILE */}
+      <div className="w-full px-4 md:px-12 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-6 flex-1">
           <Link href="/" className="flex-shrink-0 hover:opacity-90 transition cursor-pointer">
             <Image 
@@ -60,17 +63,18 @@ export default function Header() {
               alt="Christ Actu Logo" 
               width={200} 
               height={50} 
-              className="h-10 w-auto object-contain"
+              className="h-9 md:h-10 w-auto object-contain"
               priority
             />
           </Link>
 
-          <div className="hidden sm:flex flex-1 justify-center border-l-2 border-red-400 pl-6">
+          <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6">
             <TextFlipper />
           </div>
         </div>
 
-        <div className="relative w-full md:w-80">
+        {/* BARRE DE RECHERCHE DESKTOP */}
+        <div className="hidden md:block relative w-72 lg:w-80">
           <input
             type="text"
             placeholder="Rechercher une actualité..."
@@ -78,13 +82,21 @@ export default function Header() {
           />
           <Search className="absolute right-3 top-2.5 text-red-200 w-4 h-4" />
         </div>
+
+        {/* BOUTON BURGER MOBILE */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="md:hidden p-2 rounded-lg text-white hover:bg-red-800 transition focus:outline-none"
+          aria-label="Toggle Menu"
+        >
+          {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+        </button>
       </div>
 
-      {/* BARRE DE NAVIGATION */}
-      <nav className="bg-slate-900 border-t border-slate-800 w-full px-6 md:px-12">
+      {/* BARRE DE NAVIGATION DESKTOP */}
+      <nav className="hidden md:block bg-slate-900 border-t border-slate-800 w-full px-6 md:px-12">
         <div className="w-full flex items-center justify-between text-sm md:text-base font-semibold text-slate-200">
           
-          {/* BOUTON FAIS UN DON */}
           <button 
             onClick={() => setIsDonationOpen(true)}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 transition font-bold cursor-pointer"
@@ -93,7 +105,6 @@ export default function Header() {
             <span>Fais un don</span>
           </button>
 
-          {/* RUBRIQUES AVEC BOUCLE MAP */}
           <div className="flex-1 flex items-center justify-around pl-8">
             {navItems.map((item) => (
               <div 
@@ -117,7 +128,6 @@ export default function Header() {
                   </Link>
                 )}
 
-                {/* MENU DÉROULANT */}
                 <div className={`absolute top-full left-0 w-52 bg-slate-900 border border-slate-800 rounded-b-lg shadow-xl py-2 transition-all duration-200 ${
                   activeDropdown === item.slug ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                 }`}>
@@ -134,7 +144,6 @@ export default function Header() {
               </div>
             ))}
 
-            {/* BOUTON ANNONCES / PUB */}
             <Link 
               href="/annonces" 
               className="py-3 hover:text-red-400 transition whitespace-nowrap"
@@ -145,6 +154,89 @@ export default function Header() {
 
         </div>
       </nav>
+
+      {/* MENU MOBILE DÉROULANT */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-slate-900 border-t border-slate-800 px-4 pt-4 pb-6 space-y-4">
+          
+          {/* BARRE DE RECHERCHE MOBILE */}
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Rechercher une actualité..."
+              className="w-full bg-slate-800 text-white placeholder-slate-400 text-sm rounded-full py-2 pl-4 pr-10 border border-slate-700 focus:outline-none"
+            />
+            <Search className="absolute right-3 top-2.5 text-slate-400 w-4 h-4" />
+          </div>
+
+          {/* BOUTON DON MOBILE */}
+          <button 
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              setIsDonationOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition"
+          >
+            <Heart className="w-4 h-4 fill-white" />
+            <span>Fais un don</span>
+          </button>
+
+          {/* LIENS MOBILE AVEC ACCORDÉONS */}
+          <div className="space-y-1 divide-y divide-slate-800">
+            {navItems.map((item) => (
+              <div key={item.slug} className="pt-2">
+                <div className="flex items-center justify-between py-2 text-slate-200 font-medium">
+                  {item.isClickable ? (
+                    <Link 
+                      href={`/${item.slug}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="hover:text-red-400 transition"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-400">{item.label}</span>
+                  )}
+
+                  <button 
+                    onClick={() => toggleMobileSubmenu(item.slug)}
+                    className="p-1 text-slate-400 hover:text-white"
+                  >
+                    <ChevronDown className={`w-5 h-5 transition-transform ${openMobileSubmenu === item.slug ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+
+                {/* SOUS-RUBRIQUES MOBILE */}
+                {openMobileSubmenu === item.slug && (
+                  <div className="pl-4 pb-2 space-y-2 bg-slate-950/50 rounded-lg py-2 mt-1">
+                    {item.subItems.map((sub, idx) => (
+                      <Link
+                        key={idx}
+                        href={getSubItemLink(item.slug, sub)}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-sm text-slate-300 hover:text-red-400 py-1"
+                      >
+                        {sub}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="pt-3">
+              <Link 
+                href="/annonces" 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block py-2 text-slate-200 font-medium hover:text-red-400"
+              >
+                Annonces / Pub
+              </Link>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* MODALE DE DON */}
       <DonationModal 
