@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, ChevronDown, Heart, Menu, X } from 'lucide-react';
 import TextFlipper from '@/components/TextFlipper';
 import DonationModal from '@/components/DonationModal';
+import ContactModal from '@/components/ContactModal';
 
 export default function Header() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -98,13 +99,18 @@ export default function Header() {
       <nav className="hidden lg:block bg-slate-900 border-t border-slate-800 w-full px-6 lg:px-12">
         <div className="w-full flex items-center justify-between text-sm lg:text-base font-semibold text-slate-200">
           
-          <button 
-            onClick={() => setIsDonationOpen(true)}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 transition font-bold cursor-pointer"
-          >
-            <Heart className="w-4 h-4 fill-white" />
-            <span>Fais un don</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsDonationOpen(true)}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-3 transition font-bold cursor-pointer"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>Fais un don</span>
+            </button>
+
+            {/* BOUTON CONTACTEZ-NOUS AJOUTÉ ICI */}
+            <ContactModal />
+          </div>
 
           <div className="flex-1 flex items-center justify-around pl-8">
             {navItems.map((item) => (
@@ -169,16 +175,21 @@ export default function Header() {
             <Search className="absolute right-3 top-2.5 text-slate-400 w-4 h-4" />
           </div>
 
-          <button 
-            onClick={() => {
-              setIsMobileMenuOpen(false);
-              setIsDonationOpen(true);
-            }}
-            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition"
-          >
-            <Heart className="w-4 h-4 fill-white" />
-            <span>Fais un don</span>
-          </button>
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsDonationOpen(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>Fais un don</span>
+            </button>
+
+            {/* BOUTON CONTACTEZ-NOUS MOBILE */}
+            <ContactModal />
+          </div>
 
           <div className="space-y-1 divide-y divide-slate-800">
             {navItems.map((item) => (
