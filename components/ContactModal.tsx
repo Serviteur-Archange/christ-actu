@@ -7,8 +7,8 @@ import { Mail, MessageCircle, X } from 'lucide-react';
 export default function ContactModal() {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Coordonnées de contact
-  const whatsappNumber = "2250701300391"; 
+  // Coordonnées de contact mises à jour
+  const whatsappNumber = "2250545946345"; 
   const emailAddress = "agence.williarts@gmail.com"; 
 
   return (
