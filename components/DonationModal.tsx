@@ -22,6 +22,9 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
 
+  // Clé publique Paystack (prend la variable Vercel ou la clé de test par défaut)
+  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_0b2ee32c0a6d500062d73de308dc698c2ca";
+
   if (!isOpen) return null;
 
   const phoneNumbers: Record<string, { name: string; number: string }> = {
@@ -205,7 +208,7 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
                 
                 {Number(amount) > 0 ? (
                   <PaystackButton
-                    publicKey={process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''}
+                    publicKey={paystackPublicKey}
                     email={donorEmail || 'donateur@christactu.com'}
                     amount={Number(amount) * 100}
                     currency="XOF"
