@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Search, ChevronDown, Heart, Menu, X } from 'lucide-react';
 import TextFlipper from '@/components/TextFlipper';
 import DonationModal from '@/components/DonationModal';
@@ -13,6 +14,25 @@ export default function Header() {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMobileSubmenu, setOpenMobileSubmenu] = useState<string | null>(null);
+  
+  // États pour la recherche
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+
+  // Fonction de soumission de la recherche avec réinitialisation du champ
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    // 1. Redirection vers les résultats
+    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    
+    // 2. Vide la barre de recherche (desktop & mobile)
+    setSearchQuery('');
+    
+    // 3. Ferme le menu mobile si ouvert
+    setIsMobileMenuOpen(false);
+  };
 
   const getSubItemLink = (parentSlug: string, subItemName: string) => {
     if (subItemName === 'À la Une') return '/a-la-une';
@@ -76,16 +96,24 @@ export default function Header() {
         </div>
 
         {/* BARRE DE RECHERCHE DESKTOP */}
-        <div className="hidden lg:block relative w-72">
+        <form onSubmit={handleSearchSubmit} className="hidden lg:block relative w-72">
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher une actualité..."
             className="w-full bg-red-800 text-white placeholder-red-200 text-sm rounded-full py-2 pl-4 pr-10 border border-red-600 focus:outline-none focus:ring-2 focus:ring-white"
           />
-          <Search className="absolute right-3 top-2.5 text-red-200 w-4 h-4" />
-        </div>
+          <button 
+            type="submit" 
+            aria-label="Rechercher"
+            className="absolute right-3 top-2.5 text-red-200 hover:text-white transition"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </form>
 
-        {/* BOUTON BURGER (VISIBLE SUR TOUT ÉCRAN < 1024px) */}
+        {/* BOUTON BURGER (MOBILE) */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="lg:hidden p-2 rounded-lg text-white hover:bg-red-800 transition focus:outline-none"
@@ -95,7 +123,7 @@ export default function Header() {
         </button>
       </div>
 
-      {/* BARRE DE NAVIGATION DESKTOP (CACHE EN DESSOUS DE 1024px) */}
+      {/* BARRE DE NAVIGATION DESKTOP */}
       <nav className="hidden lg:block bg-slate-900 border-t border-slate-800 w-full px-6 lg:px-12">
         <div className="w-full flex items-center justify-between text-sm lg:text-base font-semibold text-slate-200">
           
@@ -108,7 +136,6 @@ export default function Header() {
               <span>Fais un don</span>
             </button>
 
-            {/* BOUTON CONTACTEZ-NOUS AJOUTÉ ICI */}
             <ContactModal />
           </div>
 
@@ -162,18 +189,27 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* MENU MOBILE DÉROULANT (S'AFFICHE SOUS 1024px) */}
+      {/* MENU MOBILE DÉROULANT */}
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-slate-900 border-t border-slate-800 px-4 pt-4 pb-6 space-y-4">
           
-          <div className="relative w-full">
+          {/* BARRE DE RECHERCHE MOBILE */}
+          <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Rechercher une actualité..."
-              className="w-full bg-slate-800 text-white placeholder-slate-400 text-sm rounded-full py-2 pl-4 pr-10 border border-slate-700 focus:outline-none"
+              className="w-full bg-slate-800 text-white placeholder-slate-400 text-sm rounded-full py-2 pl-4 pr-10 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-red-500"
             />
-            <Search className="absolute right-3 top-2.5 text-slate-400 w-4 h-4" />
-          </div>
+            <button 
+              type="submit" 
+              aria-label="Rechercher"
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </form>
 
           <div className="flex flex-col gap-2">
             <button 
@@ -187,7 +223,6 @@ export default function Header() {
               <span>Fais un don</span>
             </button>
 
-            {/* BOUTON CONTACTEZ-NOUS MOBILE */}
             <ContactModal />
           </div>
 
