@@ -5,13 +5,15 @@ import OneSignal from 'react-onesignal';
 
 export default function OneSignalInit() {
   useEffect(() => {
-    if (typeof window !== 'undefined' && !OneSignal.initialized) {
+    if (typeof window !== 'undefined' && !(OneSignal as any).initialized) {
       OneSignal.init({
         appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || '',
         allowLocalhostAsSecureOrigin: true,
-      }).then(() => {
-        OneSignal.Slidedown.promptPush();
-      }).catch((err) => console.log('OneSignal init error:', err));
+      })
+        .then(() => {
+          OneSignal.Slidedown.promptPush();
+        })
+        .catch((err) => console.log('OneSignal init error:', err));
     }
   }, []);
 
