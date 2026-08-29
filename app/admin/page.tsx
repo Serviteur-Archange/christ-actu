@@ -210,11 +210,26 @@ export default function AdminPage() {
           .insert([payload]);
 
         if (insertError) throw insertError;
+
+        // Notification push OneSignal
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: title,
+              message: lead || 'Un nouvel article vient d’être publié sur Christ Actu !',
+              url: 'https://christ-actu.vercel.app',
+            }),
+          });
+        } catch (notifyErr) {
+          console.error('Erreur lors de l’envoi de la notification Push:', notifyErr);
+        }
       }
 
       handleCancelEdit();
       fetchArticles();
-      setMessage(editingId ? 'Article mis à jour avec succès !' : 'Article publié avec succès !');
+      setMessage(editingId ? 'Article mis à jour avec succès !' : 'Article publié et notification envoyée !');
     } catch (err: any) {
       console.error(err);
       setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
@@ -337,13 +352,9 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-100 p-6 md:p-12 font-sans text-gray-900">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Navigation & Déconnexion */}
         <div className="flex justify-between items-center">
-          <Link 
-            href="/" 
-            className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-red-600 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm transition"
-          >
-            <ArrowLeft className="w-4 h-4" /> Retour à l'accueil
+          <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-red-600 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm transition">
+            <ArrowLeft className="w-4 h-4"/> Retour à l'accueil
           </Link>
           
           <div className="flex items-center gap-4">
@@ -352,12 +363,11 @@ export default function AdminPage() {
               onClick={handleLogout}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:bg-red-50 bg-white px-3 py-2 rounded-lg border border-red-200 shadow-sm transition"
             >
-              <LogOut className="w-3.5 h-3.5" /> Déconnexion
+              <LogOut className="w-3.5 h-3.5"/> Déconnexion
             </button>
           </div>
         </div>
 
-        {/* Boutons d'onglets : ARTICLES / ANNONCES */}
         <div className="flex gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
           <button
             onClick={() => { setActiveTab('articles'); setMessage(''); }}
@@ -365,7 +375,7 @@ export default function AdminPage() {
               activeTab === 'articles' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <FileText className="w-4 h-4" /> Gérer les Articles ({articles.length})
+            <FileText className="w-4 h-4"/> Gérer les Articles ({articles.length})
           </button>
           <button
             onClick={() => { setActiveTab('annonces'); setMessage(''); }}
@@ -373,7 +383,7 @@ export default function AdminPage() {
               activeTab === 'annonces' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <Megaphone className="w-4 h-4" /> Gérer les Annonces ({services.length})
+            <Megaphone className="w-4 h-4"/> Gérer les Annonces ({services.length})
           </button>
         </div>
 
@@ -484,7 +494,7 @@ export default function AdminPage() {
                     onChange={(e) => setServiceDesc(e.target.value)}
                     required
                     rows={4}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
                   />
                 </div>
 
@@ -496,14 +506,17 @@ export default function AdminPage() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => e.target.files?.[0] && setServiceImageFile(e.target.files[0])}
-                    className="w-full p-2 border border-gray-300 rounded-lg text-xs"
+                    className="w-full p-2 border border-gray-300 rounded-lg text-xs bg-gray-50"
                   />
+                  {currentServiceImageUrl && !serviceImageFile && (
+                    <p className="text-xs text-gray-500 mt-1">Image actuelle conservée.</p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg uppercase tracking-wider text-sm transition"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg uppercase tracking-wider text-sm transition shadow-md disabled:bg-gray-400"
                 >
                   {loading ? 'Publication...' : editingServiceId ? 'Mettre à jour l\'annonce' : 'Publier l\'annonce'}
                 </button>
@@ -514,33 +527,37 @@ export default function AdminPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-3">
                 Annonces actives ({services.length})
               </h2>
-              <div className="divide-y divide-gray-100">
-                {services.map((s) => (
-                  <div key={s.id} className="py-3 flex justify-between items-center gap-4">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                        {s.activity}
-                      </span>
-                      <h3 className="font-bold text-sm text-gray-800 mt-1">{s.name}</h3>
-                      <p className="text-xs text-gray-500">Tél: {s.phone} {s.location && `• ${s.location}`}</p>
+              {services.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucune annonce trouvée.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {services.map((s) => (
+                    <div key={s.id} className="py-3 flex justify-between items-center gap-4">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                          {s.activity}
+                        </span>
+                        <h3 className="font-bold text-sm text-gray-800 mt-1">{s.name}</h3>
+                        <p className="text-xs text-gray-500">Tél: {s.phone} {s.location && `• ${s.location}`}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditService(s)}
+                          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteService(s.id)}
+                          className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditService(s)}
-                        className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDeleteService(s.id)}
-                        className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -679,7 +696,7 @@ export default function AdminPage() {
                     value={lead}
                     onChange={(e) => setLead(e.target.value)}
                     rows={3}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
                   />
                 </div>
 
@@ -708,7 +725,7 @@ export default function AdminPage() {
                     onChange={(e) => setContent(e.target.value)}
                     required
                     rows={8}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
                   />
                 </div>
 
@@ -719,7 +736,7 @@ export default function AdminPage() {
                     editingId ? 'bg-slate-900 hover:bg-slate-800' : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
-                  {loading ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Publier'}
+                  {loading ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Publier et envoyer le Push'}
                 </button>
               </form>
             </div>
@@ -729,47 +746,51 @@ export default function AdminPage() {
                 Articles publiés ({articles.length})
               </h2>
 
-              <div className="divide-y divide-gray-100">
-                {currentArticles.map((item) => (
-                  <div key={item.id} className="py-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                          {item.category}
-                        </span>
-                        {item.sub_category && (
-                          <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                            {item.sub_category}
+              {articles.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucun article trouvé.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {currentArticles.map((item) => (
+                    <div key={item.id} className="py-4 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                            {item.category}
                           </span>
-                        )}
-                        {item.is_urgent && (
-                          <span className="text-[10px] font-bold uppercase bg-red-600 text-white px-2 py-0.5 rounded">
-                            À la Une
-                          </span>
-                        )}
+                          {item.sub_category && (
+                            <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              {item.sub_category}
+                            </span>
+                          )}
+                          {item.is_urgent && (
+                            <span className="text-[10px] font-bold uppercase bg-red-600 text-white px-2 py-0.5 rounded">
+                              À la Une
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-gray-800 text-sm inline-block">
+                          {item.title}
+                        </h3>
                       </div>
-                      <h3 className="font-bold text-gray-800 text-sm inline-block">
-                        {item.title}
-                      </h3>
-                    </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
-                      >
-                        Supprimer
-                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6 pt-4 border-t">

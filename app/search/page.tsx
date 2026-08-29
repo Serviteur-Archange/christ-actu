@@ -9,7 +9,7 @@ import AdSidebar from '@/components/AdSidebar';
 interface Article {
   id: string;
   title: string;
-  slug: string;
+  slug?: string;
   excerpt?: string;
   content?: string;
   image_url?: string;
@@ -41,10 +41,8 @@ function SearchComponent() {
           .order('created_at', { ascending: false });
 
         if (!error && data) {
-          // Mots vides à ignorer lors du découpage
           const stopWords = ['de', 'du', 'des', 'le', 'la', 'les', 'un', 'une', 'et', 'en', 'au', 'aux', 'a', 'pour', 'sur', 'dans'];
           
-          // Extraction des mots significatifs uniquement
           const significantWords = cleanQuery
             .split(' ')
             .map(w => w.trim())
@@ -56,16 +54,13 @@ function SearchComponent() {
             const content = article.content?.toLowerCase() || '';
             const category = article.category?.toLowerCase() || '';
 
-            // 1. Vérifie si la recherche exacte est présente
             const fullMatch = title.includes(cleanQuery) || excerpt.includes(cleanQuery) || content.includes(cleanQuery);
             if (fullMatch) return true;
 
-            // 2. Sinon, tous les mots importants doivent être présents dans l'article
             if (significantWords.length > 0) {
-              const matchesAllSignificant = significantWords.every(word =>
+              return significantWords.every(word =>
                 title.includes(word) || excerpt.includes(word) || content.includes(word) || category.includes(word)
               );
-              return matchesAllSignificant;
             }
 
             return false;
@@ -106,7 +101,8 @@ function SearchComponent() {
               {articles.map((article) => (
                 <Link 
                   key={article.id} 
-                  href={`/article/${article.slug}`} 
+                  /* CORRECTION : Utilisation de article.id à la place de article.slug */
+                  href={`/article/${article.id}`} 
                   className="group block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition"
                 >
                   <div className="relative h-48 w-full bg-gray-100">

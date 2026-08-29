@@ -1,9 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
 import { useEffect, useState, use } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Search, ChevronDown, Calendar, ArrowLeft, Bookmark, User, Plus } from 'lucide-react';
+import { Calendar, ArrowLeft, Bookmark, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdSidebar from '@/components/AdSidebar';
 
@@ -21,7 +21,6 @@ interface Article {
 function ArticleContent({ articleId }: { articleId: string }) {
   const [article, setArticle] = useState<Article | null>(null);
   const [otherArticles, setOtherArticles] = useState<Article[]>([]);
-  const [adArticle, setAdArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,30 +35,9 @@ function ArticleContent({ articleId }: { articleId: string }) {
           supabase.from('articles').select('*').neq('id', articleId).order('created_at', { ascending: false }).limit(4)
         ]);
 
-        // 1. Recherche prioritaire de la publicité (Catégorie Pub/Annonce)
-        let { data: adData } = await supabase
-          .from('articles')
-          .select('*')
-          .neq('id', articleId)
-          .or('category.ilike.%Pub%,category.ilike.%Annonce%')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        // 2. Fallback si aucune publicité n'existe en base
-        if (!adData || adData.length === 0) {
-          const fallbackRes = await supabase
-            .from('articles')
-            .select('*')
-            .neq('id', articleId)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          adData = fallbackRes.data;
-        }
-
         if (isMounted) {
           if (articleRes.data) setArticle(articleRes.data);
           if (othersRes.data) setOtherArticles(othersRes.data);
-          if (adData && adData.length > 0) setAdArticle(adData[0]);
         }
       } catch (err) {
         console.error('Erreur Supabase:', err);
@@ -85,60 +63,6 @@ function ArticleContent({ articleId }: { articleId: string }) {
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-900" suppressHydrationWarning>
       
-      {/* HEADER */}
-      <header className="bg-red-700 text-white shadow-md">
-        <div className="w-full px-6 md:px-12 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6 flex-1">
-            <Link href="/" className="flex-shrink-0">
-              <Image 
-                src="/CA blanc.png" 
-                alt="Christ Actu Logo" 
-                width={200} 
-                height={50} 
-                className="h-10 w-auto object-contain"
-                priority
-              />
-            </Link>
-            <span className="hidden sm:inline text-xl md:text-2xl italic font-extrabold text-white border-l-2 border-red-400 pl-6 flex-1 text-center tracking-wide">
-              L'essentiel de l'info chrétienne
-            </span>
-          </div>
-
-          <div className="relative w-full md:w-80">
-            <input
-              type="text"
-              placeholder="Rechercher une actualité..."
-              className="w-full bg-red-800 text-white placeholder-red-200 text-sm rounded-full py-2 pl-4 pr-10 border border-red-600 focus:outline-none focus:ring-2 focus:ring-white"
-            />
-            <Search className="absolute right-3 top-2.5 text-red-200 w-4 h-4" />
-          </div>
-        </div>
-
-        {/* NAVIGATION BAR */}
-        <nav className="bg-slate-900 border-t border-slate-800 w-full px-6 md:px-12 py-3">
-          <div className="w-full flex items-center justify-between text-sm md:text-base font-semibold text-slate-200 overflow-x-auto gap-4">
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Fais un don <ChevronDown className="w-4 h-4 text-red-500" />
-            </button>
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Actualités <ChevronDown className="w-4 h-4" />
-            </button>
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Monde <ChevronDown className="w-4 h-4" />
-            </button>
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Églises <ChevronDown className="w-4 h-4" />
-            </button>
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Société & Culture <ChevronDown className="w-4 h-4" />
-            </button>
-            <button className="flex items-center gap-1 hover:text-red-400 transition whitespace-nowrap">
-              Annonces / Pub <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
-        </nav>
-      </header>
-
       {/* CONTENU PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 py-8 pb-16">
         {loading ? (
@@ -265,25 +189,25 @@ function ArticleContent({ articleId }: { articleId: string }) {
             </section>
 
             {/* SIDEBAR PUBLICITÉ */}
-<aside className="lg:col-span-4 space-y-8">
-  <AdSidebar />
+            <aside className="lg:col-span-4 space-y-8">
+              <AdSidebar />
 
-  {/* BLOC DONATIONS */}
-  <div className="bg-red-50 p-6 rounded-xl border border-red-100 text-center space-y-3">
-    <span className="bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-      Soutenir Christ Actu
-    </span>
-    <h4 className="text-base font-extrabold text-gray-900">
-      Faites un don pour soutenir la presse chrétienne
-    </h4>
-    <p className="text-xs text-gray-600 leading-relaxed">
-      Permettez-nous de continuer à diffuser l'actualité chrétienne à travers le monde.
-    </p>
-    <button className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-lg hover:bg-slate-800 transition">
-      Faire un don maintenant
-    </button>
-  </div>
-</aside>
+              {/* BLOC DONATIONS */}
+              <div className="bg-red-50 p-6 rounded-xl border border-red-100 text-center space-y-3">
+                <span className="bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Soutenir Christ Actu
+                </span>
+                <h4 className="text-base font-extrabold text-gray-900">
+                  Faites un don pour soutenir la presse chrétienne
+                </h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Permettez-nous de continuer à diffuser l'actualité chrétienne à travers le monde.
+                </p>
+                <button className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-lg hover:bg-slate-800 transition">
+                  Faire un don maintenant
+                </button>
+              </div>
+            </aside>
           </div>
         )}
       </main>
