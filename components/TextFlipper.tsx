@@ -14,7 +14,7 @@ const WORDS = [
   'Justice',
   'Culture',
   'Sport',
-  "L'essentiel de l'info chrétienne" // Le slogan est intégré à la fin de la boucle
+  "L'essentiel de l'info chrétienne" // Slogan final
 ];
 
 export default function TextFlipper() {
@@ -22,15 +22,14 @@ export default function TextFlipper() {
   const [step, setStep] = useState<'enter' | 'exit'>('enter');
 
   useEffect(() => {
-    // 1. Temps d'affichage du mot (1 seconde, ou 2.5 secondes si c'est le slogan final)
+    // Temps d'affichage : 2.5s pour le slogan, 1s pour les mots simples
     const displayDuration = index === WORDS.length - 1 ? 2500 : 1000;
 
     const holdTimer = setTimeout(() => {
-      setStep('exit'); // Effet de flou et sortie vers le haut
+      setStep('exit');
 
-      // 2. Changement de mot après l'animation de sortie (250ms)
       setTimeout(() => {
-        setIndex((prevIndex) => (prevIndex + 1) % WORDS.length); // Boucle infinie
+        setIndex((prevIndex) => (prevIndex + 1) % WORDS.length);
         setStep('enter');
       }, 250);
     }, displayDuration);
@@ -39,9 +38,9 @@ export default function TextFlipper() {
   }, [index]);
 
   return (
-    <div className="h-10 overflow-hidden relative flex items-center justify-center">
+    <div className="h-8 sm:h-10 overflow-hidden relative flex items-center justify-center w-full">
       <span
-        className={`inline-block text-xl md:text-2xl italic font-extrabold text-white tracking-wide transition-all duration-300 ease-out transform ${
+        className={`inline-block text-[11px] sm:text-base md:text-2xl italic font-extrabold text-white tracking-wide transition-all duration-300 ease-out transform whitespace-nowrap ${
           step === 'enter'
             ? 'opacity-100 translate-y-0 blur-0'
             : 'opacity-0 -translate-y-6 blur-md'
