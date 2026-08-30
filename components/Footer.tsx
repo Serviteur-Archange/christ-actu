@@ -13,15 +13,33 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* COLONNE 2 : NAVIGATION (Rubriques aérées) */}
+        {/* COLONNE 2 : NAVIGATION */}
         <div className="space-y-4">
           <h3 className="text-lg font-bold text-white">Navigation</h3>
           <ul className="space-y-3 text-sm text-gray-300">
-            <li><Link href="/" className="hover:text-red-500 transition">Accueil</Link></li>
-            <li><Link href="/category/actualites" className="hover:text-red-500 transition">Actualités</Link></li>
-            <li><Link href="/category/eglises" className="hover:text-red-500 transition">Églises</Link></li>
-            <li><Link href="/category/societe" className="hover:text-red-500 transition">Société & Culture</Link></li>
-            <li><Link href="/contact" className="hover:text-red-500 transition">Contact</Link></li>
+            <li>
+              <Link href="/" className="hover:text-red-500 transition">Accueil</Link>
+            </li>
+            <li>
+              <Link href="/actualites" className="hover:text-red-500 transition">
+                Actualités
+              </Link>
+            </li>
+            <li>
+              <Link href="/eglises" className="hover:text-red-500 transition">
+                Églises
+              </Link>
+            </li>
+            <li>
+              <Link href="/societe-culture" className="hover:text-red-500 transition">
+                Société & Culture
+              </Link>
+            </li>
+            <li>
+              <Link href="/annonces" className="hover:text-red-500 transition">
+                Annonces / Pub
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -40,7 +58,11 @@ export default function Footer() {
       {/* COPYRIGHT */}
       <div className="border-t border-gray-900 py-6 text-center text-xs text-gray-500 space-y-2">
         <p>© 2026 CHRIST ACTU - Tous droits réservés</p>
-        <Link href="/admin">Espace Admin</Link>
+        <div>
+          <Link href="/admin/login" className="hover:text-gray-300 transition">
+            Espace Admin
+          </Link>
+        </div>
       </div>
     </footer>
   );
