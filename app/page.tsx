@@ -11,6 +11,7 @@ interface Article {
   content: string;
   image_url: string;
   is_urgent?: boolean;
+  is_portrait?: boolean; // 👈 Champ ajouté pour le filtre Portrait
   created_at: string;
 }
 
@@ -35,8 +36,18 @@ async function getArticles(): Promise<Article[]> {
 export default async function HomeJournal() {
   const articles = await getArticles();
   
+  // 1. Sélection de l'article à la une / urgent
   const urgentArticle = articles.find((art) => art.is_urgent) || articles[0];
-  const regularArticles = articles.filter((art) => art.id !== urgentArticle?.id);
+
+  // 2. Sélection de l'article Portrait (Priorité à la case cochée `is_portrait`)
+  const portraitArticle = articles.find((art) => art.is_portrait) || 
+                          articles.find((art) => art.category === 'Société & Culture') || 
+                          articles[0];
+
+  // 3. Exclure l'article Urgent ET l'article Portrait de la liste des dernières actus
+  const regularArticles = articles.filter(
+    (art) => art.id !== urgentArticle?.id && art.id !== portraitArticle?.id
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-900 flex flex-col justify-between" suppressHydrationWarning>
@@ -165,39 +176,33 @@ export default async function HomeJournal() {
                   <span className="w-2 h-2 rounded-full bg-red-600"></span>
                 </div>
 
-                {(() => {
-                  const portrait = articles.find((art) => art.category === 'Société & Culture') || articles[0];
-
-                  if (!portrait) return null;
-
-                  return (
-                    <Link href={`/article/${portrait.id}`} className="group block space-y-3">
-                      {portrait.image_url && (
-                        <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100">
-                          <img
-                            src={portrait.image_url}
-                            alt={portrait.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5">
-                        <span className="inline-block text-[10px] font-bold uppercase bg-red-50 text-red-600 px-2 py-0.5 rounded">
-                          {portrait.category || 'Portrait'}
-                        </span>
-                        <h3 className="font-extrabold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-snug">
-                          {portrait.title}
-                        </h3>
-                        {portrait.content && (
-                          <p className="text-xs text-gray-500 line-clamp-2">
-                            {portrait.content.split('\n\n')[0]}
-                          </p>
-                        )}
+                {portraitArticle && (
+                  <Link href={`/article/${portraitArticle.id}`} className="group block space-y-3">
+                    {portraitArticle.image_url && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={portraitArticle.image_url}
+                          alt={portraitArticle.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
-                    </Link>
-                  );
-                })()}
+                    )}
+
+                    <div className="space-y-1.5">
+                      <span className="inline-block text-[10px] font-bold uppercase bg-red-50 text-red-600 px-2 py-0.5 rounded">
+                        {portraitArticle.category || 'Portrait'}
+                      </span>
+                      <h3 className="font-extrabold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-snug">
+                        {portraitArticle.title}
+                      </h3>
+                      {portraitArticle.content && (
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {portraitArticle.content.split('\n\n')[0]}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                )}
               </div>
             </aside>
 
