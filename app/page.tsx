@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import AdSidebar from '@/components/AdSidebar';
+import FeaturedCarousel from '@/components/FeaturedCarousel';
 
 export const revalidate = 0; // Force le rechargement des données à chaque visite
 
@@ -67,17 +68,28 @@ async function getEvents(): Promise<EventItem[]> {
 export default async function HomeJournal() {
   const [articles, events] = await Promise.all([getArticles(), getEvents()]);
   
-  // 1. Sélection de l'article à la une / urgent
-  const urgentArticle = articles.find((art) => art.is_urgent) || articles[0];
+  // 1. Filtrage des articles "À la Une" (urgent) pour le carrousel
+  const urgentArticles = articles.filter((art) => art.is_urgent);
+  const featuredList = urgentArticles.length > 0 ? urgentArticles : articles.slice(0, 6);
 
   // 2. Sélection de l'article Portrait
   const portraitArticle = articles.find((art) => art.is_portrait) || 
                           articles.find((art) => art.category === 'Société & Culture') || 
                           articles[0];
 
-  // 3. Filtrage pour exclure les doublons
+  // 3. Extraction des articles de la rubrique "Enseignements"
+  const teachingArticles = articles.filter(
+    (art) => art.category === 'Enseignements' || art.category === 'RELIGION • ENSEIGNEMENT & SPIRITUEL'
+  );
+
+  // 4. Exclure du fil général ("Dernières Actualités") : les articles du carrousel, le portrait et les enseignements
+  const featuredIds = new Set(featuredList.map((a) => a.id));
+  const teachingIds = new Set(teachingArticles.map((a) => a.id));
+  
   const regularArticles = articles.filter(
-    (art) => art.id !== urgentArticle?.id && art.id !== portraitArticle?.id
+    (art) => !featuredIds.has(art.id) && 
+             !teachingIds.has(art.id) && 
+             art.id !== portraitArticle?.id
   );
 
   return (
@@ -115,50 +127,9 @@ export default async function HomeJournal() {
             
             {/* COLONNE PRINCIPALE */}
             <section className="lg:col-span-8 space-y-8">
-              {urgentArticle && (
-                <article className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="bg-red-600 text-white text-xs font-bold uppercase px-2.5 py-1 rounded animate-pulse shadow-[0_0_12px_rgba(220,38,38,0.8)]">
-                      {urgentArticle.is_urgent ? 'Urgent / À la Une' : urgentArticle.category}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(urgentArticle.created_at).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                  
-                  <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight mb-4 hover:text-red-600 transition">
-                    <Link href={`/article/${urgentArticle.id}`}>
-                      {urgentArticle.title}
-                    </Link>
-                  </h2>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <Link href={`/article/${urgentArticle.id}`} className="relative h-64 w-full rounded-lg border border-gray-100 bg-gray-100 overflow-hidden flex items-center justify-center block">
-                      {urgentArticle.image_url ? (
-                        <img 
-                          src={urgentArticle.image_url} 
-                          alt={urgentArticle.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-gray-400 text-sm font-semibold">Pas d'image</span>
-                      )}
-                    </Link>
-                    <div className="space-y-3">
-                      <p className="text-gray-600 text-sm leading-relaxed line-clamp-6">
-                        {urgentArticle.content}
-                      </p>
-                      <Link href={`/article/${urgentArticle.id}`} className="inline-block text-red-600 font-bold text-sm hover:underline pt-2">
-                        Lire la suite →
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              )}
+              {/* CARROUSEL À LA UNE */}
+              <FeaturedCarousel articles={featuredList} />
 
               {/* DERNIÈRES ACTUALITÉS */}
               <div>
@@ -199,7 +170,51 @@ export default async function HomeJournal() {
                 </div>
               </div>
 
-              {/* SECTION ÉVÉNEMENTS (ADAPTATIVE SELON LA PROPORTION DU VISUEL) */}
+              {/* SECTION ENSEIGNEMENTS & SPIRITUALITÉ */}
+              {teachingArticles.length > 0 && (
+                <div className="pt-2">
+                  <h3 className="text-xl font-black text-gray-900 mb-4 border-b pb-2 flex items-center justify-between">
+                    <span>📖 Enseignements & Spiritualité</span>
+                    <span className="h-2 w-2 rounded-full bg-red-600"></span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {teachingArticles.slice(0, 3).map((item) => (
+                      <article key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                        <div>
+                          {item.image_url && (
+                            <Link href={`/article/${item.id}`} className="block relative w-full h-40 bg-gray-100 overflow-hidden">
+                              <img 
+                                src={item.image_url} 
+                                alt={item.title} 
+                                className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                              />
+                            </Link>
+                          )}
+                          <div className="p-4">
+                            <span className="text-[10px] font-extrabold uppercase bg-red-50 text-red-600 px-2 py-0.5 rounded">
+                              Enseignement
+                            </span>
+                            <h4 className="font-extrabold text-sm text-gray-900 mt-2 mb-1 line-clamp-2 hover:text-red-600 transition">
+                              <Link href={`/article/${item.id}`}>{item.title}</Link>
+                            </h4>
+                            <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed mt-2">
+                              {item.content}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="p-4 pt-0">
+                          <Link href={`/article/${item.id}`} className="text-xs font-bold text-red-600 hover:underline">
+                            Lire la prédication →
+                          </Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION ÉVÉNEMENTS */}
               {events.length > 0 && (
                 <div className="pt-4">
                   <h3 className="text-xl font-black text-gray-900 mb-4 border-b pb-2 flex items-center justify-between">
@@ -217,7 +232,6 @@ export default async function HomeJournal() {
                             </span>
                           </div>
 
-                          {/* CONTENEUR ADAPTATIF : S'ajuste naturellement à l'image sans rognage ni bandes noires */}
                           {evt.image_url && (
                             <div className="w-full rounded-lg overflow-hidden bg-gray-50 mb-3 border border-gray-100">
                               <img 

@@ -883,6 +883,7 @@ export default function AdminPage() {
                       <option value="Monde">Monde</option>
                       <option value="Églises">Églises</option>
                       <option value="Société & Culture">Société & Culture</option>
+                      <option value="Enseignements">Enseignements</option>
                     </select>
                   </div>
 

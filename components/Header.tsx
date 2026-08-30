@@ -38,6 +38,7 @@ export default function Header() {
     if (subItemName === 'À la Une') return '/a-la-une';
     if (subItemName === 'Flash Info') return '/flash-info';
     if (subItemName === 'Vidéos') return '/videos';
+    if (subItemName === 'Prédications & Méditations') return '/enseignements';
     return `/${parentSlug}`;
   };
 
@@ -49,10 +50,10 @@ export default function Header() {
       subItems: ['À la Une', 'Flash Info', 'Vidéos']
     },
     {
-      label: 'Monde',
-      slug: 'monde',
+      label: 'Enseignements',
+      slug: 'enseignements',
       isClickable: true,
-      subItems: ['Afrique', 'Europe', 'Amériques', 'Moyen-Orient & Asie']
+      subItems: ['Prédications & Méditations', 'Études Bibliques', 'Doctrine & Foi']
     },
     {
       label: 'Églises',
@@ -65,6 +66,12 @@ export default function Header() {
       slug: 'societe-culture',
       isClickable: true,
       subItems: ['Musique & Louange', 'Livres & Médias', 'Économie & Éthique', 'Famille']
+    },
+    {
+      label: 'Monde',
+      slug: 'monde',
+      isClickable: true,
+      subItems: ['Afrique', 'Europe', 'Amériques', 'Moyen-Orient & Asie']
     },
   ];
 
@@ -90,8 +97,8 @@ export default function Header() {
           />
         </Link>
 
-        {/* FLIPPER TEXT (DESKTOP SEULEMENT) */}
-        <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6">
+        {/* FLIPPER TEXT (DESKTOP) */}
+        <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6 overflow-hidden">
           <TextFlipper />
         </div>
 
@@ -121,6 +128,13 @@ export default function Header() {
         >
           {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
+      </div>
+
+      {/* BANNIÈRE FLIPPER TEXT POUR MOBILE */}
+      <div className="lg:hidden w-full bg-red-800/90 border-t border-red-600/50 py-1.5 px-4 overflow-hidden">
+        <div className="w-full text-xs flex justify-center items-center">
+          <TextFlipper />
+        </div>
       </div>
 
       {/* BARRE DE NAVIGATION DESKTOP */}
@@ -162,7 +176,7 @@ export default function Header() {
                   </Link>
                 )}
 
-                <div className={`absolute top-full left-0 w-52 bg-slate-900 border border-slate-800 rounded-b-lg shadow-xl py-2 transition-all duration-200 ${
+                <div className={`absolute top-full left-0 w-56 bg-slate-900 border border-slate-800 rounded-b-lg shadow-xl py-2 transition-all duration-200 ${
                   activeDropdown === item.slug ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                 }`}>
                   {item.subItems.map((sub, idx) => (

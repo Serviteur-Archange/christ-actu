@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { Calendar, ArrowLeft, Bookmark, User } from 'lucide-react';
+import { Calendar, ArrowLeft, Bookmark, User, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdSidebar from '@/components/AdSidebar';
 
@@ -16,6 +16,7 @@ interface Article {
   author_name?: string;
   author?: string;
   created_at: string;
+  views?: number;
 }
 
 function ArticleContent({ articleId }: { articleId: string }) {
@@ -29,6 +30,18 @@ function ArticleContent({ articleId }: { articleId: string }) {
     async function loadAllData() {
       try {
         setLoading(true);
+
+        // Bloque les doublons en dev / session unique par visiteur
+        const viewedKey = `viewed_article_${articleId}`;
+        const hasViewed = sessionStorage.getItem(viewedKey);
+
+        if (!hasViewed) {
+          sessionStorage.setItem(viewedKey, 'true');
+          const { error: rpcError } = await supabase.rpc('increment_views', { 
+            article_id: articleId 
+          });
+          if (rpcError) console.error('Erreur incrémentation vues:', rpcError);
+        }
 
         const [articleRes, othersRes] = await Promise.all([
           supabase.from('articles').select('*').eq('id', articleId).maybeSingle(),
@@ -103,6 +116,12 @@ function ArticleContent({ articleId }: { articleId: string }) {
                       month: 'long',
                       year: 'numeric'
                     })}
+                  </span>
+
+                  {/* AFFICHAGE DES VUES */}
+                  <span className="text-xs font-bold text-gray-600 flex items-center gap-1 border-l pl-3 border-gray-300">
+                    <Eye className="w-3.5 h-3.5 text-red-600" />
+                    {article.views || 0} Vues
                   </span>
                 </div>
 

@@ -2,12 +2,14 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-black text-white border-t border-gray-800">
+    <footer className="bg-black text-white border-t border-gray-800 font-sans">
       <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
         
         {/* COLONNE 1 : LOGO ET DESCRIPTION */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-black tracking-wider text-white">CHRIST ACTU</h2>
+          <h2 className="text-2xl font-black tracking-wider text-white">
+            CHRIST <span className="text-red-600">ACTU</span>
+          </h2>
           <p className="text-gray-400 text-sm leading-relaxed">
             L’essentiel de l’information chrétienne en Côte d’Ivoire et dans le monde.
           </p>
@@ -26,6 +28,12 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/enseignements" className="hover:text-red-500 transition flex items-center gap-2">
+                <span>Enseignements</span>
+                <span className="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded">Nouveau</span>
+              </Link>
+            </li>
+            <li>
               <Link href="/eglises" className="hover:text-red-500 transition">
                 Églises
               </Link>
@@ -33,6 +41,11 @@ export default function Footer() {
             <li>
               <Link href="/societe-culture" className="hover:text-red-500 transition">
                 Société & Culture
+              </Link>
+            </li>
+            <li>
+              <Link href="/monde" className="hover:text-red-500 transition">
+                Monde
               </Link>
             </li>
             <li>
