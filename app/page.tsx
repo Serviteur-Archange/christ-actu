@@ -11,10 +11,22 @@ interface Article {
   content: string;
   image_url: string;
   is_urgent?: boolean;
-  is_portrait?: boolean; // 👈 Champ ajouté pour le filtre Portrait
+  is_portrait?: boolean;
   created_at: string;
 }
 
+interface EventItem {
+  id: string;
+  title: string;
+  date_event: string;
+  location: string;
+  type: string;
+  image_url?: string;
+  link_url?: string;
+  created_at?: string;
+}
+
+// Récupération des articles
 async function getArticles(): Promise<Article[]> {
   try {
     const { data, error } = await supabase
@@ -23,28 +35,47 @@ async function getArticles(): Promise<Article[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Erreur Supabase:', error);
+      console.error('Erreur Supabase (articles):', error);
       return [];
     }
     return data || [];
   } catch (err) {
-    console.error('Erreur Fetch:', err);
+    console.error('Erreur Fetch articles:', err);
+    return [];
+  }
+}
+
+// Récupération des événements
+async function getEvents(): Promise<EventItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erreur Supabase (events):', error);
+      return [];
+    }
+    return data || [];
+  } catch (err) {
+    console.error('Erreur Fetch events:', err);
     return [];
   }
 }
 
 export default async function HomeJournal() {
-  const articles = await getArticles();
+  const [articles, events] = await Promise.all([getArticles(), getEvents()]);
   
   // 1. Sélection de l'article à la une / urgent
   const urgentArticle = articles.find((art) => art.is_urgent) || articles[0];
 
-  // 2. Sélection de l'article Portrait (Priorité à la case cochée `is_portrait`)
+  // 2. Sélection de l'article Portrait
   const portraitArticle = articles.find((art) => art.is_portrait) || 
                           articles.find((art) => art.category === 'Société & Culture') || 
                           articles[0];
 
-  // 3. Exclure l'article Urgent ET l'article Portrait de la liste des dernières actus
+  // 3. Filtrage pour exclure les doublons
   const regularArticles = articles.filter(
     (art) => art.id !== urgentArticle?.id && art.id !== portraitArticle?.id
   );
@@ -82,6 +113,7 @@ export default async function HomeJournal() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
+            {/* COLONNE PRINCIPALE */}
             <section className="lg:col-span-8 space-y-8">
               {urgentArticle && (
                 <article className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
@@ -128,6 +160,7 @@ export default async function HomeJournal() {
                 </article>
               )}
 
+              {/* DERNIÈRES ACTUALITÉS */}
               <div>
                 <h3 className="text-xl font-black text-gray-900 mb-4 border-b pb-2 flex items-center justify-between">
                   <span>Dernières Actualités</span>
@@ -165,8 +198,68 @@ export default async function HomeJournal() {
                   ))}
                 </div>
               </div>
+
+              {/* SECTION ÉVÉNEMENTS (ADAPTATIVE SELON LA PROPORTION DU VISUEL) */}
+              {events.length > 0 && (
+                <div className="pt-4">
+                  <h3 className="text-xl font-black text-gray-900 mb-4 border-b pb-2 flex items-center justify-between">
+                    <span>📅 Événements & Agenda Chrétien</span>
+                    <span className="h-2 w-2 rounded-full bg-red-600"></span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-start">
+                    {events.map((evt) => (
+                      <div key={evt.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col justify-between hover:border-red-300 hover:shadow-md transition">
+                        <div>
+                          <div className="mb-2">
+                            <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full">
+                              {evt.type}
+                            </span>
+                          </div>
+
+                          {/* CONTENEUR ADAPTATIF : S'ajuste naturellement à l'image sans rognage ni bandes noires */}
+                          {evt.image_url && (
+                            <div className="w-full rounded-lg overflow-hidden bg-gray-50 mb-3 border border-gray-100">
+                              <img 
+                                src={evt.image_url} 
+                                alt={evt.title} 
+                                className="w-full h-auto object-contain block"
+                              />
+                            </div>
+                          )}
+
+                          <h4 className="font-extrabold text-sm text-gray-900 leading-snug">
+                            {evt.title}
+                          </h4>
+
+                          <div className="mt-2 space-y-1 text-xs text-gray-600">
+                            <p className="flex items-center gap-1.5">
+                              <span>📅</span> <strong>{evt.date_event}</strong>
+                            </p>
+                            <p className="flex items-center gap-1.5 text-gray-500 truncate">
+                              <span>📍</span> {evt.location}
+                            </p>
+                          </div>
+                        </div>
+
+                        {evt.link_url && (
+                          <a
+                            href={evt.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-4 w-full text-center text-xs font-bold text-white bg-red-600 hover:bg-red-700 py-2.5 rounded-lg transition block"
+                          >
+                            Billetterie / Info
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
+            {/* SIDEBAR LATÉRALE */}
             <aside className="lg:col-span-4 space-y-8">
               <AdSidebar />
 

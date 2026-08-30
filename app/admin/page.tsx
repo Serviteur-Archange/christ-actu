@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut, Megaphone, FileText } from 'lucide-react';
+import { ArrowLeft, LogOut, Megaphone, FileText, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface Article {
@@ -33,11 +33,22 @@ interface Service {
   created_at: string;
 }
 
+interface EventItem {
+  id: string;
+  title: string;
+  date_event: string;
+  location: string;
+  type: string;
+  image_url?: string;
+  link_url?: string;
+  created_at?: string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState<'articles' | 'annonces'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'annonces' | 'events'>('articles');
 
   // --- ÉTATS ARTICLES ---
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -69,6 +80,17 @@ export default function AdminPage() {
   const [currentServiceImageUrl, setCurrentServiceImageUrl] = useState('');
   const [services, setServices] = useState<Service[]>([]);
 
+  // --- ÉTATS ÉVÉNEMENTS ---
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventLocation, setEventLocation] = useState('');
+  const [eventType, setEventType] = useState('');
+  const [eventLink, setEventLink] = useState('');
+  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+  const [currentEventImageUrl, setCurrentEventImageUrl] = useState('');
+  const [events, setEvents] = useState<EventItem[]>([]);
+
   useEffect(() => {
     const isLogged = localStorage.getItem('admin_logged');
     
@@ -77,6 +99,7 @@ export default function AdminPage() {
     } else {
       fetchArticles();
       fetchServices();
+      fetchEvents();
       setCheckingAuth(false);
     }
   }, [router]);
@@ -108,6 +131,21 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Erreur chargement services:', err);
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setEvents(data);
+      }
+    } catch (err) {
+      console.error('Erreur chargement événements:', err);
     }
   };
 
@@ -211,7 +249,6 @@ export default function AdminPage() {
 
         if (insertError) throw insertError;
 
-        // Notification push OneSignal
         try {
           await fetch('/api/notify', {
             method: 'POST',
@@ -336,6 +373,91 @@ export default function AdminPage() {
     }
   };
 
+  // --- LOGIQUE ÉVÉNEMENTS ---
+  const handleEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      let imageUrl = currentEventImageUrl;
+
+      if (eventImageFile) {
+        const fileExt = eventImageFile.name.split('.').pop();
+        const fileName = `event_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('articles')
+          .upload(fileName, eventImageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('articles')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+      }
+
+      const payload = {
+        title: eventTitle,
+        date_event: eventDate,
+        location: eventLocation,
+        type: eventType,
+        link_url: eventLink || null,
+        image_url: imageUrl || null,
+      };
+
+      if (editingEventId) {
+        const { error } = await supabase.from('events').update(payload).eq('id', editingEventId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('events').insert([payload]);
+        if (error) throw error;
+      }
+
+      handleCancelEventEdit();
+      fetchEvents();
+      setMessage(editingEventId ? 'Événement mis à jour avec succès !' : 'Événement ajouté avec succès !');
+    } catch (err: any) {
+      console.error(err);
+      setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditEvent = (evt: EventItem) => {
+    setEditingEventId(evt.id);
+    setEventTitle(evt.title);
+    setEventDate(evt.date_event);
+    setEventLocation(evt.location);
+    setEventType(evt.type);
+    setEventLink(evt.link_url || '');
+    setCurrentEventImageUrl(evt.image_url || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEventEdit = () => {
+    setEditingEventId(null);
+    setEventTitle('');
+    setEventDate('');
+    setEventLocation('');
+    setEventType('');
+    setEventLink('');
+    setEventImageFile(null);
+    setCurrentEventImageUrl('');
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (confirm('Voulez-vous vraiment supprimer cet événement ?')) {
+      const { error } = await supabase.from('events').delete().eq('id', id);
+      if (!error) {
+        if (editingEventId === id) handleCancelEventEdit();
+        fetchEvents();
+      }
+    }
+  };
+
   const totalPages = Math.ceil(articles.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentArticles = articles.slice(startIndex, startIndex + itemsPerPage);
@@ -368,14 +490,14 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="flex gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
           <button
             onClick={() => { setActiveTab('articles'); setMessage(''); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
               activeTab === 'articles' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <FileText className="w-4 h-4"/> Gérer les Articles ({articles.length})
+            <FileText className="w-4 h-4"/> Articles ({articles.length})
           </button>
           <button
             onClick={() => { setActiveTab('annonces'); setMessage(''); }}
@@ -383,7 +505,15 @@ export default function AdminPage() {
               activeTab === 'annonces' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <Megaphone className="w-4 h-4"/> Gérer les Annonces ({services.length})
+            <Megaphone className="w-4 h-4"/> Annonces ({services.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab('events'); setMessage(''); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
+              activeTab === 'events' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Calendar className="w-4 h-4"/> Événements ({events.length})
           </button>
         </div>
 
@@ -392,6 +522,161 @@ export default function AdminPage() {
             message.startsWith('Erreur') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
           }`}>
             {message}
+          </div>
+        )}
+
+        {/* ================= ONGLET ÉVÉNEMENTS ================= */}
+        {activeTab === 'events' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <h1 className="text-2xl font-black text-gray-900">
+                  {editingEventId ? 'Modifier l\'événement' : 'Ajouter un événement au programme'}
+                </h1>
+                {editingEventId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEventEdit}
+                    className="text-xs font-bold text-gray-500 hover:text-gray-800 bg-gray-100 px-3 py-1.5 rounded"
+                  >
+                    Annuler la modification
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleEventSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                      Titre de l'événement
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Grande Nuit d'Adoration"
+                      value={eventTitle}
+                      onChange={(e) => setEventTitle(e.target.value)}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                      Type d'événement
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Concert, Séminaire, Théâtre, Veillée..."
+                      value={eventType}
+                      onChange={(e) => setEventType(e.target.value)}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                      Date & Heure
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Samedi 15 Novembre à 18h00"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                      Lieu / Emplacement
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Palais des Sports, Treichville"
+                      value={eventLocation}
+                      onChange={(e) => setEventLocation(e.target.value)}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                    Lien vers la billetterie ou plus d'infos (facultatif)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={eventLink}
+                    onChange={(e) => setEventLink(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
+                    Affiche / Flyer (facultatif)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => e.target.files?.[0] && setEventImageFile(e.target.files[0])}
+                    className="w-full p-2 border border-gray-300 rounded-lg text-xs bg-gray-50"
+                  />
+                  {currentEventImageUrl && !eventImageFile && (
+                    <p className="text-xs text-gray-500 mt-1">Image actuelle conservée.</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg uppercase tracking-wider text-sm transition shadow-md disabled:bg-gray-400"
+                >
+                  {loading ? 'Enregistrement...' : editingEventId ? 'Mettre à jour l\'événement' : 'Ajouter au programme'}
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-3">
+                Événements programmés ({events.length})
+              </h2>
+              {events.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucun événement à venir.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {events.map((evt) => (
+                    <div key={evt.id} className="py-3 flex justify-between items-center gap-4">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                          {evt.type}
+                        </span>
+                        <h3 className="font-bold text-sm text-gray-800 mt-1">{evt.title}</h3>
+                        <p className="text-xs text-gray-500">📅 {evt.date_event} • 📍 {evt.location}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditEvent(evt)}
+                          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEvent(evt.id)}
+                          className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
