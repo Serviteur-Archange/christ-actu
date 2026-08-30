@@ -15,22 +15,15 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMobileSubmenu, setOpenMobileSubmenu] = useState<string | null>(null);
   
-  // États pour la recherche
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
-  // Fonction de soumission de la recherche avec réinitialisation du champ
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     
-    // 1. Redirection vers les résultats
     router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    
-    // 2. Vide la barre de recherche (desktop & mobile)
     setSearchQuery('');
-    
-    // 3. Ferme le menu mobile si ouvert
     setIsMobileMenuOpen(false);
   };
 
@@ -82,8 +75,8 @@ export default function Header() {
   return (
     <header className="bg-red-700 text-white shadow-md relative z-50 font-sans">
       
-      {/* LIGNE SUPÉRIEURE : LOGO + RECHERCHE DESKTOP + BURGER MOBILE */}
-      <div className="w-full px-4 lg:px-12 py-3 flex items-center justify-between gap-2">
+      {/* LIGNE SUPÉRIEURE : LOGO + TEXTFLIPPER (INTÉGRÉ) + BURGER */}
+      <div className="w-full px-3 sm:px-4 lg:px-12 py-2.5 flex items-center justify-between gap-2 overflow-hidden">
         
         {/* LOGO */}
         <Link href="/" className="flex-shrink-0 hover:opacity-90 transition cursor-pointer">
@@ -92,29 +85,31 @@ export default function Header() {
             alt="Christ Actu Logo" 
             width={180} 
             height={45} 
-            className="h-8 sm:h-10 w-auto object-contain"
+            className="h-7 sm:h-9 w-auto object-contain"
             priority
           />
         </Link>
 
-        {/* FLIPPER TEXT (DESKTOP) */}
-        <div className="hidden lg:flex flex-1 justify-center border-l-2 border-red-400 pl-6 overflow-hidden">
-          <TextFlipper />
+        {/* FLIPPER TEXT INTÉGRÉ (DESKTOP ET MOBILE) */}
+        <div className="flex-1 flex justify-center items-center min-w-0 px-2 border-l border-red-500/60 ml-1">
+          <div className="w-full truncate text-center text-xs sm:text-sm">
+            <TextFlipper />
+          </div>
         </div>
 
         {/* BARRE DE RECHERCHE DESKTOP */}
-        <form onSubmit={handleSearchSubmit} className="hidden lg:block relative w-72">
+        <form onSubmit={handleSearchSubmit} className="hidden lg:block relative w-64 flex-shrink-0">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher une actualité..."
-            className="w-full bg-red-800 text-white placeholder-red-200 text-sm rounded-full py-2 pl-4 pr-10 border border-red-600 focus:outline-none focus:ring-2 focus:ring-white"
+            placeholder="Rechercher..."
+            className="w-full bg-red-800 text-white placeholder-red-200 text-sm rounded-full py-1.5 pl-4 pr-10 border border-red-600 focus:outline-none focus:ring-2 focus:ring-white"
           />
           <button 
             type="submit" 
             aria-label="Rechercher"
-            className="absolute right-3 top-2.5 text-red-200 hover:text-white transition"
+            className="absolute right-3 top-2 text-red-200 hover:text-white transition"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -123,18 +118,11 @@ export default function Header() {
         {/* BOUTON BURGER (MOBILE) */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden p-2 rounded-lg text-white hover:bg-red-800 transition focus:outline-none"
+          className="lg:hidden p-1.5 rounded-lg text-white hover:bg-red-800 transition focus:outline-none flex-shrink-0"
           aria-label="Toggle Menu"
         >
-          {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
-      </div>
-
-      {/* BANNIÈRE FLIPPER TEXT POUR MOBILE */}
-      <div className="lg:hidden w-full bg-red-800/90 border-t border-red-600/50 py-1.5 px-4 overflow-hidden">
-        <div className="w-full text-xs flex justify-center items-center">
-          <TextFlipper />
-        </div>
       </div>
 
       {/* BARRE DE NAVIGATION DESKTOP */}
@@ -207,7 +195,6 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-slate-900 border-t border-slate-800 px-4 pt-4 pb-6 space-y-4">
           
-          {/* BARRE DE RECHERCHE MOBILE */}
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input
               type="text"
@@ -295,7 +282,6 @@ export default function Header() {
         </div>
       )}
 
-      {/* MODALE DE DON */}
       <DonationModal 
         isOpen={isDonationOpen} 
         onClose={() => setIsDonationOpen(false)} 
