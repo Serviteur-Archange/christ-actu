@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Calendar, ArrowLeft, Bookmark, User, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AdSidebar from '@/components/AdSidebar';
+import DonationBanner from '@/components/DonationBanner';
 
 interface Article {
   id: string;
@@ -207,25 +208,10 @@ function ArticleContent({ articleId }: { articleId: string }) {
               )}
             </section>
 
-            {/* SIDEBAR PUBLICITÉ */}
+            {/* SIDEBAR PUBLICITÉ ET BLOC DONATIONS */}
             <aside className="lg:col-span-4 space-y-8">
               <AdSidebar />
-
-              {/* BLOC DONATIONS */}
-              <div className="bg-red-50 p-6 rounded-xl border border-red-100 text-center space-y-3">
-                <span className="bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                  Soutenir Christ Actu
-                </span>
-                <h4 className="text-base font-extrabold text-gray-900">
-                  Faites un don pour soutenir la presse chrétienne
-                </h4>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  Permettez-nous de continuer à diffuser l'actualité chrétienne à travers le monde.
-                </p>
-                <button className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-lg hover:bg-slate-800 transition">
-                  Faire un don maintenant
-                </button>
-              </div>
+              <DonationBanner />
             </aside>
           </div>
         )}

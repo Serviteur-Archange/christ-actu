@@ -11,7 +11,6 @@ interface BannerAd {
   link?: string;
 }
 
-// Tes 4 affiches originales haute définition
 const LOCAL_ADS: BannerAd[] = [
   {
     id: 'local-1',
@@ -43,7 +42,6 @@ export default function AdSidebar() {
   const [ads, setAds] = useState<BannerAd[]>(LOCAL_ADS);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 1. Charger les publicités depuis Supabase (si la table contient des données)
   useEffect(() => {
     async function fetchAds() {
       try {
@@ -54,9 +52,7 @@ export default function AdSidebar() {
 
         if (!error && data && data.length > 0) {
           const validAds = data.filter((ad) => ad.image_url);
-          if (validAds.length > 0) {
-            setAds(validAds);
-          }
+          if (validAds.length > 0) setAds(validAds);
         }
       } catch (err) {
         console.error('Erreur Supabase Ads:', err);
@@ -66,7 +62,6 @@ export default function AdSidebar() {
     fetchAds();
   }, []);
 
-  // 2. Défilement automatique toutes les 5 secondes
   useEffect(() => {
     if (ads.length <= 1) return;
 
@@ -81,14 +76,12 @@ export default function AdSidebar() {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
-      {/* En-tête */}
       <div className="flex items-center justify-between border-b pb-2">
         <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
           PUBLICITÉ
         </span>
       </div>
 
-      {/* Affichage de l'affiche courante optimisée */}
       <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
         <a 
           href={currentAd.link || '#'} 
@@ -108,12 +101,12 @@ export default function AdSidebar() {
         </a>
       </div>
 
-      {/* Indicateurs du carrousel */}
       {ads.length > 1 && (
         <div className="flex justify-center gap-1.5 pt-1">
           {ads.map((_, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => setCurrentIndex(idx)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 idx === currentIndex ? 'w-5 bg-red-600' : 'w-1.5 bg-gray-300'
