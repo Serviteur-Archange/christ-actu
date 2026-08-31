@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut, Megaphone, FileText, Calendar } from 'lucide-react';
+import { ArrowLeft, LogOut, Megaphone, FileText, Calendar, BookOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface Article {
@@ -48,7 +48,8 @@ export default function AdminPage() {
   const router = useRouter();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState<'articles' | 'annonces' | 'events'>('articles');
+  // Ajout de 'enseignements' dans les onglets actifs
+  const [activeTab, setActiveTab] = useState<'articles' | 'enseignements' | 'annonces' | 'events'>('articles');
 
   // --- ÉTATS ARTICLES ---
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,6 +68,15 @@ export default function AdminPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // --- ÉTATS ENSEIGNEMENTS ---
+  const [ensTitle, setEnsTitle] = useState('');
+  const [ensPreacher, setEnsPreacher] = useState('');
+  const [ensContent, setEnsContent] = useState('');
+  const [ensImageFile, setEnsImageFile] = useState<File | null>(null);
+  const [ensEditingId, setEnsEditingId] = useState<string | null>(null);
+  const [currentEnsImageUrl, setCurrentEnsImageUrl] = useState('');
+  const [enseignements, setEnseignements] = useState<Article[]>([]);
 
   // --- ÉTATS ANNONCES / SERVICES ---
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
@@ -98,6 +108,7 @@ export default function AdminPage() {
       router.replace('/admin/login');
     } else {
       fetchArticles();
+      fetchEnseignements();
       fetchServices();
       fetchEvents();
       setCheckingAuth(false);
@@ -109,13 +120,26 @@ export default function AdminPage() {
       const { data, error } = await supabase
         .from('articles')
         .select('*')
+        .neq('category', 'Enseignements')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setArticles(data);
-      }
+      if (!error && data) setArticles(data);
     } catch (err) {
       console.error('Erreur chargement articles:', err);
+    }
+  };
+
+  const fetchEnseignements = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('category', 'Enseignements')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) setEnseignements(data);
+    } catch (err) {
+      console.error('Erreur chargement enseignements:', err);
     }
   };
 
@@ -126,9 +150,7 @@ export default function AdminPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setServices(data);
-      }
+      if (!error && data) setServices(data);
     } catch (err) {
       console.error('Erreur chargement services:', err);
     }
@@ -141,9 +163,7 @@ export default function AdminPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setEvents(data);
-      }
+      if (!error && data) setEvents(data);
     } catch (err) {
       console.error('Erreur chargement événements:', err);
     }
@@ -154,11 +174,89 @@ export default function AdminPage() {
     router.replace('/admin/login');
   };
 
+  // --- LOGIQUE ENSEIGNEMENTS ---
+  const handleEnseignementSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      let imageUrl = currentEnsImageUrl;
+
+      if (ensImageFile) {
+        const fileExt = ensImageFile.name.split('.').pop();
+        const fileName = `ens_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('articles')
+          .upload(fileName, ensImageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('articles')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+      }
+
+      const payload = {
+        title: ensTitle,
+        category: 'Enseignements',
+        sub_category: ensPreacher ? `Orateur: ${ensPreacher}` : 'Enseignement',
+        content: ensContent,
+        image_url: imageUrl,
+      };
+
+      if (ensEditingId) {
+        const { error } = await supabase.from('articles').update(payload).eq('id', ensEditingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('articles').insert([payload]);
+        if (error) throw error;
+      }
+
+      handleCancelEnsEdit();
+      fetchEnseignements();
+      setMessage(ensEditingId ? 'Enseignement mis à jour !' : 'Enseignement publié avec succès !');
+    } catch (err: any) {
+      console.error(err);
+      setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditEns = (item: Article) => {
+    setEnsEditingId(item.id);
+    setEnsTitle(item.title);
+    setEnsPreacher(item.sub_category?.replace('Orateur: ', '') || '');
+    setEnsContent(item.content);
+    setCurrentEnsImageUrl(item.image_url || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEnsEdit = () => {
+    setEnsEditingId(null);
+    setEnsTitle('');
+    setEnsPreacher('');
+    setEnsContent('');
+    setEnsImageFile(null);
+    setCurrentEnsImageUrl('');
+  };
+
+  const handleDeleteEns = async (id: string) => {
+    if (confirm('Voulez-vous supprimer cet enseignement ?')) {
+      const { error } = await supabase.from('articles').delete().eq('id', id);
+      if (!error) {
+        if (ensEditingId === id) handleCancelEnsEdit();
+        fetchEnseignements();
+      }
+    }
+  };
+
   // --- LOGIQUE ARTICLES ---
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
+    if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]);
   };
 
   const handleEdit = (article: Article) => {
@@ -236,37 +334,16 @@ export default function AdminPage() {
       };
 
       if (editingId) {
-        const { error: updateError } = await supabase
-          .from('articles')
-          .update(payload)
-          .eq('id', editingId);
-
+        const { error: updateError } = await supabase.from('articles').update(payload).eq('id', editingId);
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await supabase
-          .from('articles')
-          .insert([payload]);
-
+        const { error: insertError } = await supabase.from('articles').insert([payload]);
         if (insertError) throw insertError;
-
-        try {
-          await fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: title,
-              message: lead || 'Un nouvel article vient d’être publié sur Christ Actu !',
-              url: 'https://christ-actu.vercel.app',
-            }),
-          });
-        } catch (notifyErr) {
-          console.error('Erreur lors de l’envoi de la notification Push:', notifyErr);
-        }
       }
 
       handleCancelEdit();
       fetchArticles();
-      setMessage(editingId ? 'Article mis à jour avec succès !' : 'Article publié et notification envoyée !');
+      setMessage(editingId ? 'Article mis à jour avec succès !' : 'Article publié !');
     } catch (err: any) {
       console.error(err);
       setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
@@ -276,7 +353,7 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Voulez-vous vraiment supprimer cet article ?')) {
+    if (confirm('Voulez-vous supprimer cet article ?')) {
       const { error } = await supabase.from('articles').delete().eq('id', id);
       if (!error) {
         if (editingId === id) handleCancelEdit();
@@ -285,7 +362,7 @@ export default function AdminPage() {
     }
   };
 
-  // --- LOGIQUE ANNONCES / SERVICES ---
+  // --- LOGIQUE ANNONCES ---
   const handleServiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -297,16 +374,10 @@ export default function AdminPage() {
       if (serviceImageFile) {
         const fileExt = serviceImageFile.name.split('.').pop();
         const fileName = `service_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('articles')
-          .upload(fileName, serviceImageFile);
-
+        const { error: uploadError } = await supabase.storage.from('articles').upload(fileName, serviceImageFile);
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage
-          .from('articles')
-          .getPublicUrl(fileName);
-
+        const { data: publicUrlData } = supabase.storage.from('articles').getPublicUrl(fileName);
         imageUrl = publicUrlData.publicUrl;
       }
 
@@ -330,7 +401,7 @@ export default function AdminPage() {
 
       handleCancelServiceEdit();
       fetchServices();
-      setMessage(editingServiceId ? 'Annonce mise à jour avec succès !' : 'Annonce publiée avec succès !');
+      setMessage(editingServiceId ? 'Annonce mise à jour !' : 'Annonce publiée !');
     } catch (err: any) {
       console.error(err);
       setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
@@ -364,7 +435,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteService = async (id: string) => {
-    if (confirm('Voulez-vous vraiment supprimer cette annonce ?')) {
+    if (confirm('Voulez-vous supprimer cette annonce ?')) {
       const { error } = await supabase.from('services').delete().eq('id', id);
       if (!error) {
         if (editingServiceId === id) handleCancelServiceEdit();
@@ -385,16 +456,10 @@ export default function AdminPage() {
       if (eventImageFile) {
         const fileExt = eventImageFile.name.split('.').pop();
         const fileName = `event_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('articles')
-          .upload(fileName, eventImageFile);
-
+        const { error: uploadError } = await supabase.storage.from('articles').upload(fileName, eventImageFile);
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage
-          .from('articles')
-          .getPublicUrl(fileName);
-
+        const { data: publicUrlData } = supabase.storage.from('articles').getPublicUrl(fileName);
         imageUrl = publicUrlData.publicUrl;
       }
 
@@ -417,7 +482,7 @@ export default function AdminPage() {
 
       handleCancelEventEdit();
       fetchEvents();
-      setMessage(editingEventId ? 'Événement mis à jour avec succès !' : 'Événement ajouté avec succès !');
+      setMessage(editingEventId ? 'Événement mis à jour !' : 'Événement ajouté !');
     } catch (err: any) {
       console.error(err);
       setMessage(`Erreur : ${err.message || 'Une erreur est survenue'}`);
@@ -449,7 +514,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteEvent = async (id: string) => {
-    if (confirm('Voulez-vous vraiment supprimer cet événement ?')) {
+    if (confirm('Voulez-vous supprimer cet événement ?')) {
       const { error } = await supabase.from('events').delete().eq('id', id);
       if (!error) {
         if (editingEventId === id) handleCancelEventEdit();
@@ -464,7 +529,7 @@ export default function AdminPage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 font-sans text-gray-700">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-700">
         <p className="font-semibold text-sm">Vérification de l'accès...</p>
       </div>
     );
@@ -490,6 +555,7 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* --- BARRE D'ONGLETS COMPRENANT ENSEIGNEMENTS --- */}
         <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
           <button
             onClick={() => { setActiveTab('articles'); setMessage(''); }}
@@ -499,6 +565,16 @@ export default function AdminPage() {
           >
             <FileText className="w-4 h-4"/> Articles ({articles.length})
           </button>
+
+          <button
+            onClick={() => { setActiveTab('enseignements'); setMessage(''); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
+              activeTab === 'enseignements' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <BookOpen className="w-4 h-4"/> Enseignements ({enseignements.length})
+          </button>
+
           <button
             onClick={() => { setActiveTab('annonces'); setMessage(''); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
@@ -507,6 +583,7 @@ export default function AdminPage() {
           >
             <Megaphone className="w-4 h-4"/> Annonces ({services.length})
           </button>
+
           <button
             onClick={() => { setActiveTab('events'); setMessage(''); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
@@ -525,79 +602,50 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= ONGLET ÉVÉNEMENTS ================= */}
-        {activeTab === 'events' && (
+        {/* ================= ONGLET ENSEIGNEMENTS ================= */}
+        {activeTab === 'enseignements' && (
           <div className="space-y-6">
             <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-6 border-b pb-4">
                 <h1 className="text-2xl font-black text-gray-900">
-                  {editingEventId ? 'Modifier l\'événement' : 'Ajouter un événement au programme'}
+                  {ensEditingId ? 'Modifier l\'enseignement' : 'Publier un Enseignement'}
                 </h1>
-                {editingEventId && (
+                {ensEditingId && (
                   <button
                     type="button"
-                    onClick={handleCancelEventEdit}
+                    onClick={handleCancelEnsEdit}
                     className="text-xs font-bold text-gray-500 hover:text-gray-800 bg-gray-100 px-3 py-1.5 rounded"
                   >
-                    Annuler la modification
+                    Annuler
                   </button>
                 )}
               </div>
 
-              <form onSubmit={handleEventSubmit} className="space-y-4">
+              <form onSubmit={handleEnseignementSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Titre de l'événement
+                      Titre de l'enseignement
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex: Grande Nuit d'Adoration"
-                      value={eventTitle}
-                      onChange={(e) => setEventTitle(e.target.value)}
+                      placeholder="Ex: La puissance de la foi"
+                      value={ensTitle}
+                      onChange={(e) => setEnsTitle(e.target.value)}
                       required
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Type d'événement
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Concert, Séminaire, Théâtre, Veillée..."
-                      value={eventType}
-                      onChange={(e) => setEventType(e.target.value)}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Date & Heure
+                      Auteur / Orateur (Pasteur, Prédicateur...)
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex: Samedi 15 Novembre à 18h00"
-                      value={eventDate}
-                      onChange={(e) => setEventDate(e.target.value)}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Lieu / Emplacement
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Palais des Sports, Treichville"
-                      value={eventLocation}
-                      onChange={(e) => setEventLocation(e.target.value)}
-                      required
+                      placeholder="Ex: Pasteur Jean Koffi"
+                      value={ensPreacher}
+                      onChange={(e) => setEnsPreacher(e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
                     />
                   </div>
@@ -605,235 +653,66 @@ export default function AdminPage() {
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                    Lien vers la billetterie ou plus d'infos (facultatif)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={eventLink}
-                    onChange={(e) => setEventLink(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                    Affiche / Flyer (facultatif)
+                    Image d'illustration (facultatif)
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => e.target.files?.[0] && setEventImageFile(e.target.files[0])}
+                    onChange={(e) => e.target.files?.[0] && setEnsImageFile(e.target.files[0])}
                     className="w-full p-2 border border-gray-300 rounded-lg text-xs bg-gray-50"
                   />
-                  {currentEventImageUrl && !eventImageFile && (
-                    <p className="text-xs text-gray-500 mt-1">Image actuelle conservée.</p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg uppercase tracking-wider text-sm transition shadow-md disabled:bg-gray-400"
-                >
-                  {loading ? 'Enregistrement...' : editingEventId ? 'Mettre à jour l\'événement' : 'Ajouter au programme'}
-                </button>
-              </form>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-3">
-                Événements programmés ({events.length})
-              </h2>
-              {events.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucun événement à venir.</p>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {events.map((evt) => (
-                    <div key={evt.id} className="py-3 flex justify-between items-center gap-4">
-                      <div>
-                        <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                          {evt.type}
-                        </span>
-                        <h3 className="font-bold text-sm text-gray-800 mt-1">{evt.title}</h3>
-                        <p className="text-xs text-gray-500">📅 {evt.date_event} • 📍 {evt.location}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditEvent(evt)}
-                          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEvent(evt.id)}
-                          className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ================= ONGLET ANNONCES ================= */}
-        {activeTab === 'annonces' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h1 className="text-2xl font-black text-gray-900">
-                  {editingServiceId ? 'Modifier l\'annonce' : 'Publier une nouvelle annonce'}
-                </h1>
-                {editingServiceId && (
-                  <button
-                    type="button"
-                    onClick={handleCancelServiceEdit}
-                    className="text-xs font-bold text-gray-500 hover:text-gray-800 bg-gray-100 px-3 py-1.5 rounded"
-                  >
-                    Annuler la modification
-                  </button>
-                )}
-              </div>
-
-              <form onSubmit={handleServiceSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Nom / Nom du prestataire
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Frère Jean - Électricien"
-                      value={serviceName}
-                      onChange={(e) => setServiceName(e.target.value)}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Domaine d'activité
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Plomberie, Menuiserie, Couture..."
-                      value={serviceActivity}
-                      onChange={(e) => setServiceActivity(e.target.value)}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Téléphone (Appels)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: +225 0700000000"
-                      value={servicePhone}
-                      onChange={(e) => setServicePhone(e.target.value)}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      WhatsApp (avec indicatif)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: 2250700000000"
-                      value={serviceWhatsapp}
-                      onChange={(e) => setServiceWhatsapp(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                      Ville / Localisation
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Abidjan, Bouaké..."
-                      value={serviceLocation}
-                      onChange={(e) => setServiceLocation(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none"
-                    />
-                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                    Description des services
+                    Texte de l'enseignement / Prédication
                   </label>
                   <textarea
-                    placeholder="Présentez les prestations proposées..."
-                    value={serviceDesc}
-                    onChange={(e) => setServiceDesc(e.target.value)}
+                    placeholder="Contenu complet de l'enseignement..."
+                    value={ensContent}
+                    onChange={(e) => setEnsContent(e.target.value)}
                     required
-                    rows={4}
+                    rows={8}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                    Photo / Logo (facultatif)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => e.target.files?.[0] && setServiceImageFile(e.target.files[0])}
-                    className="w-full p-2 border border-gray-300 rounded-lg text-xs bg-gray-50"
-                  />
-                  {currentServiceImageUrl && !serviceImageFile && (
-                    <p className="text-xs text-gray-500 mt-1">Image actuelle conservée.</p>
-                  )}
-                </div>
-
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-lg uppercase tracking-wider text-sm transition shadow-md disabled:bg-gray-400"
                 >
-                  {loading ? 'Publication...' : editingServiceId ? 'Mettre à jour l\'annonce' : 'Publier l\'annonce'}
+                  {loading ? 'Enregistrement...' : ensEditingId ? 'Mettre à jour' : 'Publier l\'enseignement'}
                 </button>
               </form>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-3">
-                Annonces actives ({services.length})
+                Enseignements publiés ({enseignements.length})
               </h2>
-              {services.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucune annonce trouvée.</p>
+              {enseignements.length === 0 ? (
+                <p className="text-sm text-gray-500">Aucun enseignement publié pour le moment.</p>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {services.map((s) => (
-                    <div key={s.id} className="py-3 flex justify-between items-center gap-4">
+                  {enseignements.map((item) => (
+                    <div key={item.id} className="py-3 flex justify-between items-center gap-4">
                       <div>
-                        <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                          {s.activity}
+                        <span className="text-[10px] font-extrabold uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
+                          Enseignement
                         </span>
-                        <h3 className="font-bold text-sm text-gray-800 mt-1">{s.name}</h3>
-                        <p className="text-xs text-gray-500">Tél: {s.phone} {s.location && `• ${s.location}`}</p>
+                        <h3 className="font-bold text-sm text-gray-800 mt-1">{item.title}</h3>
+                        <p className="text-xs text-gray-500">{item.sub_category}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleEditService(s)}
+                          onClick={() => handleEditEns(item)}
                           className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
                         >
                           Modifier
                         </button>
                         <button
-                          onClick={() => handleDeleteService(s.id)}
+                          onClick={() => handleDeleteEns(item.id)}
                           className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
                         >
                           Supprimer
@@ -880,10 +759,9 @@ export default function AdminPage() {
                     >
                       <option value="">-- Sélectionnez une rubrique --</option>
                       <option value="Actualités">Actualités</option>
-                      <option value="Monde">Monde</option>
                       <option value="Églises">Églises</option>
                       <option value="Société & Culture">Société & Culture</option>
-                      <option value="Enseignements">Enseignements</option>
+                      <option value="Monde">Monde</option>
                     </select>
                   </div>
 
@@ -895,9 +773,7 @@ export default function AdminPage() {
                       value={subCategory}
                       onChange={(e) => {
                         setSubCategory(e.target.value);
-                        if (e.target.value === 'À la Une') {
-                          setIsUrgent(true);
-                        }
+                        if (e.target.value === 'À la Une') setIsUrgent(true);
                       }}
                       required
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:outline-none bg-white font-semibold text-gray-800"
@@ -934,9 +810,7 @@ export default function AdminPage() {
                       checked={isUrgent}
                       onChange={(e) => {
                         setIsUrgent(e.target.checked);
-                        if (e.target.checked) {
-                          setSubCategory('À la Une');
-                        }
+                        if (e.target.checked) setSubCategory('À la Une');
                       }}
                       className="w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer"
                     />
@@ -994,11 +868,8 @@ export default function AdminPage() {
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
-                    className="w-full p-2 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-red-600 file:text-white file:font-bold hover:file:bg-red-700 cursor-pointer text-xs"
+                    className="w-full p-2 border border-gray-300 rounded-lg text-xs"
                   />
-                  {currentImageUrl && !imageFile && (
-                    <p className="text-xs text-gray-500 mt-1">Image actuelle conservée.</p>
-                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -1018,11 +889,9 @@ export default function AdminPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full font-bold py-3.5 rounded-lg transition disabled:opacity-50 text-sm uppercase tracking-wider text-white ${
-                    editingId ? 'bg-slate-900 hover:bg-slate-800' : 'bg-red-600 hover:bg-red-700'
-                  }`}
+                  className="w-full font-bold py-3.5 rounded-lg transition text-sm uppercase text-white bg-red-600 hover:bg-red-700"
                 >
-                  {loading ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Publier et envoyer le Push'}
+                  {loading ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Publier l\'article'}
                 </button>
               </form>
             </div>
@@ -1032,73 +901,133 @@ export default function AdminPage() {
                 Articles publiés ({articles.length})
               </h2>
 
-              {articles.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucun article trouvé.</p>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {currentArticles.map((item) => (
-                    <div key={item.id} className="py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-[10px] font-bold uppercase bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                            {item.category}
-                          </span>
-                          {item.sub_category && (
-                            <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                              {item.sub_category}
-                            </span>
-                          )}
-                          {item.is_urgent && (
-                            <span className="text-[10px] font-bold uppercase bg-red-600 text-white px-2 py-0.5 rounded">
-                              À la Une
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-bold text-gray-800 text-sm inline-block">
-                          {item.title}
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
+              <div className="divide-y divide-gray-100">
+                {currentArticles.map((item) => (
+                  <div key={item.id} className="py-4 flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase bg-gray-100 text-gray-600 px-2 py-0.5 rounded mr-2">
+                        {item.category}
+                      </span>
+                      <h3 className="font-bold text-gray-800 text-sm inline-block">{item.title}</h3>
                     </div>
-                  ))}
-                </div>
-              )}
 
-              {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => prev - 1)}
-                    className="px-3 py-1 bg-gray-100 rounded text-xs font-bold disabled:opacity-50"
-                  >
-                    Précédent
-                  </button>
-                  <span className="text-xs text-gray-500 font-semibold">
-                    Page {currentPage} sur {totalPages}
-                  </span>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => prev + 1)}
-                    className="px-3 py-1 bg-gray-100 rounded text-xs font-bold disabled:opacity-50"
-                  >
-                    Suivant
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ONGLET ANNONCES ================= */}
+        {activeTab === 'annonces' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
+              <h1 className="text-2xl font-black text-gray-900 mb-6 border-b pb-4">
+                {editingServiceId ? 'Modifier l\'annonce' : 'Publier une nouvelle annonce'}
+              </h1>
+              <form onSubmit={handleServiceSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Nom du prestataire"
+                    value={serviceName}
+                    onChange={(e) => setServiceName(e.target.value)}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Domaine d'activité"
+                    value={serviceActivity}
+                    onChange={(e) => setServiceActivity(e.target.value)}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
                 </div>
-              )}
+                <input
+                  type="text"
+                  placeholder="Téléphone"
+                  value={servicePhone}
+                  onChange={(e) => setServicePhone(e.target.value)}
+                  required
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                />
+                <textarea
+                  placeholder="Description"
+                  value={serviceDesc}
+                  onChange={(e) => setServiceDesc(e.target.value)}
+                  required
+                  rows={4}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                />
+                <button type="submit" className="w-full bg-red-600 text-white font-bold py-3 rounded-lg">
+                  Publier l'annonce
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ONGLET ÉVÉNEMENTS ================= */}
+        {activeTab === 'events' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200">
+              <h1 className="text-2xl font-black text-gray-900 mb-6 border-b pb-4">
+                {editingEventId ? 'Modifier l\'événement' : 'Ajouter un événement'}
+              </h1>
+              <form onSubmit={handleEventSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Titre de l'événement"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  required
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Type d'événement"
+                    value={eventType}
+                    onChange={(e) => setEventType(e.target.value)}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Date & Heure"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Lieu"
+                  value={eventLocation}
+                  onChange={(e) => setEventLocation(e.target.value)}
+                  required
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                />
+                <button type="submit" className="w-full bg-red-600 text-white font-bold py-3 rounded-lg">
+                  Ajouter l'événement
+                </button>
+              </form>
             </div>
           </div>
         )}
